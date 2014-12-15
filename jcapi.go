@@ -29,6 +29,11 @@ type JCAPI struct {
 	UrlBase string
 }
 
+const (
+	searchLimit        int = 1000
+	searchSkipInterval int = 1000
+)
+
 type JCError interface {
 	Error() string
 }
@@ -41,7 +46,7 @@ func (e *errorString) Error() string {
 	return e.s
 }
 
-func newJCAPI(apiKey string, urlBase string) JCAPI {
+func NewJCAPI(apiKey string, urlBase string) JCAPI {
 	return JCAPI{
 		ApiKey:  apiKey,
 		UrlBase: urlBase,
@@ -104,34 +109,32 @@ func (jc JCAPI) setHeader(req *http.Request) {
 	req.Header.Set("x-api-key", jc.ApiKey)
 }
 
-func (jc JCAPI) post(url string, data []byte) (interface{}, JCError) {
-	return jc.do(mapJCOpToHTTP(insert), url, data)
+func (jc JCAPI) Post(url string, data []byte) (interface{}, JCError) {
+	return jc.Do(MapJCOpToHTTP(insert), url, data)
 }
 
-func (jc JCAPI) put(url string, data []byte) (interface{}, JCError) {
-	return jc.do(mapJCOpToHTTP(update), url, data)
+func (jc JCAPI) Put(url string, data []byte) (interface{}, JCError) {
+	return jc.Do(MapJCOpToHTTP(update), url, data)
 }
 
-func (jc JCAPI) delete(url string) (interface{}, JCError) {
-	return jc.do(mapJCOpToHTTP(delete), url, nil)
+func (jc JCAPI) Delete(url string) (interface{}, JCError) {
+	return jc.Do(MapJCOpToHTTP(delete), url, nil)
 }
 
-func (jc JCAPI) get(url string) (interface{}, JCError) {
-	return jc.do(mapJCOpToHTTP(read), url, nil)
+func (jc JCAPI) Get(url string) (interface{}, JCError) {
+	return jc.Do(MapJCOpToHTTP(read), url, nil)
 }
 
-func (jc JCAPI) list(url string) (interface{}, JCError) {
-	return jc.do(mapJCOpToHTTP(list), url, nil)
+func (jc JCAPI) List(url string) (interface{}, JCError) {
+	return jc.Do(MapJCOpToHTTP(list), url, nil)
 }
 
-func (jc JCAPI) do(op, url string, data []byte) (interface{}, JCError) {
+func (jc JCAPI) Do(op, url string, data []byte) (interface{}, JCError) {
 	var returnVal interface{}
 
 	fullUrl := jc.UrlBase + url
 
 	client := &http.Client{}
-
-	dbg(3, "JCAPI.do(): op='%s' - url='%s' - data='%s'\n", op, fullUrl, data)
 
 	req, err := http.NewRequest(op, fullUrl, bytes.NewReader(data))
 	if err != nil {
@@ -156,8 +159,6 @@ func (jc JCAPI) do(op, url string, data []byte) (interface{}, JCError) {
 		return returnVal, fmt.Errorf("ERROR: Could not read the response body, err='%s'", err)
 	}
 
-	dbg(3, "200 OK Response Buffer=%U\n", string(buffer))
-
 	err = json.Unmarshal(buffer, &returnVal)
 	if err != nil {
 		return returnVal, fmt.Errorf("ERROR: Could not Unmarshal JSON response, err='%s'", err)
@@ -167,7 +168,7 @@ func (jc JCAPI) do(op, url string, data []byte) (interface{}, JCError) {
 }
 
 // Add all the tags of which the user is a part to the JCUser object
-func (user *JCUser) addTags(tags []JCTag) {
+func (user *JCUser) AddJCTags(tags []JCTag) {
 	for _, tag := range tags {
 		for _, systemUser := range tag.SystemUsers {
 			if systemUser == user.Id {
@@ -177,7 +178,7 @@ func (user *JCUser) addTags(tags []JCTag) {
 	}
 }
 
-func mapJCOpToHTTP(op JCOp) string {
+func MapJCOpToHTTP(op JCOp) string {
 	var returnVal string
 
 	switch op {

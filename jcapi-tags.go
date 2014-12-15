@@ -1,4 +1,4 @@
-package main
+package jcapi
 
 import (
 	"fmt"
@@ -26,13 +26,13 @@ type JCTag struct {
 	applyToJumpCloud bool
 }
 
-func (tag JCTag) toString() string {
+func (tag JCTag) ToString() string {
 	return fmt.Sprintf("tag id=%s - name='%s' - groupName='%s' - expires='%s' - systems='%s' - systemusers='%s' - applyToJC='%t' - externally_managed='%t' (%s)",
 		tag.Id, tag.Name, tag.GroupName, tag.ExpirationTime, strings.Join(tag.Systems, ","),
 		strings.Join(tag.SystemUsers, ","), tag.applyToJumpCloud, tag.ExternallyManaged, tag.ExternalDN)
 }
 
-func getTagNames(tags []JCTag) []string {
+func GetTagNames(tags []JCTag) []string {
 	var returnVal []string
 
 	for _, tag := range tags {
@@ -93,33 +93,39 @@ func (jc JCAPI) getTagFieldsFromInterface(tagData map[string]interface{}, tag *J
 	}
 }
 
-func (jc JCAPI) getAllTags() ([]JCTag, JCError) {
-	result, err := jc.get("/tags")
-	if err != nil {
-		return nil, fmt.Errorf("ERROR: Get tags from JumpCloud failed, err='%s'", err)
+func (jc JCAPI) GetAllTags() (tagList []JCTag, err JCError) {
+	var returnVal []JCTag
+
+	for skip := 0; skip == 0 || len(returnVal) == searchLimit; skip += searchSkipInterval {
+		url := fmt.Sprintf("/tags?sort=username&skip=%d&limit=%d", skip, searchLimit)
+
+		result, err := jc.Get(url)
+		if err != nil {
+			return nil, fmt.Errorf("ERROR: Get tags from JumpCloud failed, err='%s'", err)
+		}
+
+		recMap := result.(map[string]interface{})
+
+		resultsMap := recMap["results"].([]interface{})
+
+		returnVal := make([]JCTag, len(resultsMap))
+
+		for idx, tagData := range resultsMap {
+			jc.getTagFieldsFromInterface(tagData.(map[string]interface{}), &returnVal[idx])
+		}
+
+		for i, _ := range returnVal {
+			tagList = append(tagList, returnVal[i])
+		}
 	}
 
-	dbg(3, "result=[%U]\n", result)
-
-	recMap := result.(map[string]interface{})
-
-	resultsMap := recMap["results"].([]interface{})
-
-	returnVal := make([]JCTag, len(resultsMap))
-
-	for idx, tagData := range resultsMap {
-		jc.getTagFieldsFromInterface(tagData.(map[string]interface{}), &returnVal[idx])
-
-		dbg(3, "%s\n", returnVal[idx].toString())
-	}
-
-	return returnVal, err
+	return
 }
 
 //
 // Add or Update a tag in place on JumpCloud
 //
-func (jc JCAPI) addUpdateTag(op JCOp, tag JCTag) (string, JCError) {
+func (jc JCAPI) AddUpdateTag(op JCOp, tag JCTag) (tagId string, err JCError) {
 	data, err := tag.MarshalJSON()
 	if err != nil {
 		return "", fmt.Errorf("ERROR: Could not marshal JCTag object, err='%s'", err)
@@ -130,7 +136,7 @@ func (jc JCAPI) addUpdateTag(op JCOp, tag JCTag) (string, JCError) {
 		url += "/" + tag.Id
 	}
 
-	jcTagRec, err := jc.do(mapJCOpToHTTP(op), url, data)
+	jcTagRec, err := jc.Do(MapJCOpToHTTP(op), url, data)
 	if err != nil {
 		return "", fmt.Errorf("ERROR: Could not post new JCTag object, err='%s'", err)
 	}
@@ -142,11 +148,13 @@ func (jc JCAPI) addUpdateTag(op JCOp, tag JCTag) (string, JCError) {
 		return "", fmt.Errorf("ERROR: JumpCloud did not return the same tag name - this should never happen!")
 	}
 
-	return resultTag.Id, nil
+	tagId = resultTag.Id
+
+	return
 }
 
-func (jc JCAPI) deleteTag(tag JCTag) JCError {
-	_, err := jc.delete(fmt.Sprintf("/tags/%s", tag.Id))
+func (jc JCAPI) DeleteTag(tag JCTag) JCError {
+	_, err := jc.Delete(fmt.Sprintf("/tags/%s", tag.Id))
 	if err != nil {
 		return fmt.Errorf("ERROR: Could not delete tag ID '%s': err='%s'", tag.Id, err)
 	}

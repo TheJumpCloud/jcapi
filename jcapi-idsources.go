@@ -1,4 +1,4 @@
-package main
+package jcapi
 
 import (
 	"fmt"
@@ -17,7 +17,7 @@ type JCIDSource struct {
 	Active         bool   `json:active, omitempty`
 }
 
-func (e JCIDSource) toString() string {
+func (e JCIDSource) ToString() string {
 	return fmt.Sprintf("idsource: id='%s' - name='%s' - type='%s' - version='%s' - ipAddr='%s' - lastUpdate='%s' - DN='%s' - active='%t'\n",
 		e.Id, e.Name, e.Type, e.Version, e.IpAddress, e.LastUpdateTime, e.DN, e.Active)
 }
@@ -50,7 +50,7 @@ func getIDSourceFieldsFromInterface(fields map[string]interface{}, e *JCIDSource
 	}
 }
 
-func (e JCIDSource) MarshalJSON(writeActive bool) ([]byte, error) {
+func (e JCIDSource) marshalJSON(writeActive bool) ([]byte, error) {
 
 	var builder []string
 
@@ -84,35 +84,21 @@ func getJCIDSourcesFromInterface(idSource interface{}) []JCIDSource {
 
 	recMap := idSource.(map[string]interface{})
 
-	if WillDebug(3) {
-		dbg(3, "recMap[\"results\"]=%U\n\n------\n", recMap["results"])
-
-		for key, value := range recMap {
-			dbg(3, "recMap: key=[%s] - value=[%s]\n", key, value)
-		}
-	}
-
 	results := recMap["results"].([]interface{})
 
 	returnVal = make([]JCIDSource, len(results))
 
 	for idx, result := range results {
-		if WillDebug(3) {
-			for key, value := range result.(map[string]interface{}) {
-				dbg(3, "results: key=[%s] - value=[%s]\n", key, value)
-			}
-		}
-
 		getIDSourceFieldsFromInterface(result.(map[string]interface{}), &returnVal[idx])
 	}
 
 	return returnVal
 }
 
-func (jc JCAPI) getAllIDSources() ([]JCIDSource, JCError) {
+func (jc JCAPI) GetAllIDSources() ([]JCIDSource, JCError) {
 	var returnValue []JCIDSource
 
-	result, err := jc.get("/idsources")
+	result, err := jc.Get("/idsources")
 	if err != nil {
 		return returnValue, fmt.Errorf("ERROR: Could not list ID sources, err='%s'", err)
 	}
@@ -122,10 +108,10 @@ func (jc JCAPI) getAllIDSources() ([]JCIDSource, JCError) {
 	return returnValue, nil
 }
 
-func (jc JCAPI) getIDSourceByName(name string) (JCIDSource, bool, JCError) {
+func (jc JCAPI) GetIDSourceByName(name string) (JCIDSource, bool, JCError) {
 	var returnValue JCIDSource
 
-	e, err := jc.getAllIDSources()
+	e, err := jc.GetAllIDSources()
 	if err != nil {
 		return returnValue, false, fmt.Errorf("ERROR: Could not gather all ID source objects, err='%s'", err)
 	}
@@ -142,8 +128,8 @@ func (jc JCAPI) getIDSourceByName(name string) (JCIDSource, bool, JCError) {
 //
 // Add or Update an ID source in place on JumpCloud
 //
-func (jc JCAPI) addUpdateIDSource(op JCOp, idSource JCIDSource) (string, JCError) {
-	data, err := idSource.MarshalJSON(op == insert)
+func (jc JCAPI) AddUpdateIDSource(op JCOp, idSource JCIDSource) (string, JCError) {
+	data, err := idSource.marshalJSON(op == insert)
 	if err != nil {
 		return "", fmt.Errorf("ERROR: Could not marshal JCTag object, err='%s'", err)
 	}
@@ -153,7 +139,7 @@ func (jc JCAPI) addUpdateIDSource(op JCOp, idSource JCIDSource) (string, JCError
 		url += "/" + idSource.Id
 	}
 
-	idSourceRec, err := jc.do(mapJCOpToHTTP(op), url, data)
+	idSourceRec, err := jc.Do(MapJCOpToHTTP(op), url, data)
 	if err != nil {
 		return "", fmt.Errorf("ERROR: Could not post new JCIDSource object, err='%s'", err)
 	}
@@ -168,10 +154,8 @@ func (jc JCAPI) addUpdateIDSource(op JCOp, idSource JCIDSource) (string, JCError
 	return resultES.Id, nil
 }
 
-func (jc JCAPI) deleteIDSource(idSource JCIDSource) JCError {
-	dbg(3, "Deleting External Source ID=%d", idSource.Id)
-
-	_, err := jc.delete(fmt.Sprintf("/idsources/%s", idSource.Id))
+func (jc JCAPI) DeleteIDSource(idSource JCIDSource) JCError {
+	_, err := jc.Delete(fmt.Sprintf("/idsources/%s", idSource.Id))
 	if err != nil {
 		return fmt.Errorf("ERROR: Could not delete ID source ID '%s': err='%s'", idSource.Id, err)
 	}

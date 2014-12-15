@@ -1,4 +1,4 @@
-package main
+package jcapi
 
 import (
 	"encoding/json"
@@ -34,25 +34,25 @@ type JCUser struct {
 	tags []JCTag
 }
 
-func usersToString(users []JCUser) string {
+func UsersToString(users []JCUser) string {
 	returnVal := ""
 
 	for _, user := range users {
-		returnVal += user.toString()
+		returnVal += user.ToString()
 	}
 
 	return returnVal
 }
 
-func (jcuser JCUser) toString() string {
+func (jcuser JCUser) ToString() string {
 	//
 	// WARNING: Never output password via this method, it could be logged in clear text
 	//
-	returnVal := fmt.Sprintf("id=[%s] - userName=[%s] - email=[%s] - externally_managed=[%t] - sudo=[%t] - Uid=%d - Gid=%d - enableManagedUid=%t\n", jcuser.Id, jcuser.UserName,
+	returnVal := fmt.Sprintf("id=[%s] - userName=[%s] - email=[%s] - externally_managed=[%t] - sudo=[%t] - Uid=%s - Gid=%s - enableManagedUid=%t\n", jcuser.Id, jcuser.UserName,
 		jcuser.Email, jcuser.ExternallyManaged, jcuser.Sudo, jcuser.Uid, jcuser.Gid, jcuser.EnableManagedUid)
 
 	for _, tag := range jcuser.tags {
-		returnVal += fmt.Sprintf("\t%s\n", tag.toString())
+		returnVal += fmt.Sprintf("\t%s\n", tag.ToString())
 	}
 
 	return returnVal
@@ -104,25 +104,11 @@ func getJCUsersFromInterface(userInt interface{}) []JCUser {
 
 	recMap := userInt.(map[string]interface{})
 
-	if WillDebug(3) {
-		dbg(3, "recMap[\"results\"]=%U\n\n------\n", recMap["results"])
-
-		for key, value := range recMap {
-			dbg(3, "recMap: key=[%s] - value=[%s]\n", key, value)
-		}
-	}
-
 	results := recMap["results"].([]interface{})
 
 	returnVal = make([]JCUser, len(results))
 
 	for idx, result := range results {
-		if WillDebug(3) {
-			for key, value := range result.(map[string]interface{}) {
-				dbg(3, "results: key=[%s] - value=[%s]\n", key, value)
-			}
-		}
-
 		getJCUserFieldsFromInterface(result.(map[string]interface{}), &returnVal[idx])
 	}
 
@@ -130,10 +116,10 @@ func getJCUsersFromInterface(userInt interface{}) []JCUser {
 }
 
 // Executes a search by email via the JumpCloud API
-func (jc JCAPI) getSystemUserByEmail(email string, withTags bool) ([]JCUser, JCError) {
+func (jc JCAPI) GetSystemUserByEmail(email string, withTags bool) ([]JCUser, JCError) {
 	var returnVal []JCUser
 
-	jcUserRec, err := jc.post("/search/systemusers", jc.emailFilter(email))
+	jcUserRec, err := jc.Post("/search/systemusers", jc.emailFilter(email))
 	if err != nil {
 		return nil, fmt.Errorf("ERROR: Post to JumpCloud failed, err='%s'", err)
 	}
@@ -141,47 +127,55 @@ func (jc JCAPI) getSystemUserByEmail(email string, withTags bool) ([]JCUser, JCE
 	returnVal = getJCUsersFromInterface(jcUserRec)
 
 	if withTags {
-		tags, err := jc.getAllTags()
+		tags, err := jc.GetAllTags()
 		if err != nil {
 			return nil, fmt.Errorf("ERROR: Could not get tags, err='%s'", err)
 		}
 
 		for idx, _ := range returnVal {
-			returnVal[idx].addTags(tags)
+			returnVal[idx].AddJCTags(tags)
 		}
 	}
 
 	return returnVal, nil
 }
 
-func (jc JCAPI) getSystemUsers(withTags bool) ([]JCUser, JCError) {
+func (jc JCAPI) GetSystemUsers(withTags bool) (userList []JCUser, err JCError) {
 	var returnVal []JCUser
 
-	jcUserRec, err := jc.post("/search/systemusers", []byte("{}"))
-	if err != nil {
-		return nil, fmt.Errorf("ERROR: Post to JumpCloud failed, err='%s'", err)
+	for skip := 0; skip == 0 || len(returnVal) == searchLimit; skip += searchSkipInterval {
+		url := fmt.Sprintf("/systemusers?sort=username&skip=%d&limit=%d", skip, searchLimit)
+
+		jcUserRec, err := jc.Get(url)
+		if err != nil {
+			return nil, fmt.Errorf("ERROR: Post to JumpCloud failed, err='%s'", err)
+		}
+
+		returnVal = getJCUsersFromInterface(jcUserRec)
+
+		for i, _ := range returnVal {
+			userList = append(userList, returnVal[i])
+		}
 	}
 
-	returnVal = getJCUsersFromInterface(jcUserRec)
-
 	if withTags {
-		tags, err := jc.getAllTags()
+		tags, err := jc.GetAllTags()
 		if err != nil {
 			return nil, fmt.Errorf("ERROR: Could not get tags, err='%s'", err)
 		}
 
-		for idx, _ := range returnVal {
-			returnVal[idx].addTags(tags)
+		for idx, _ := range userList {
+			userList[idx].AddJCTags(tags)
 		}
 	}
 
-	return returnVal, nil
+	return
 }
 
 //
 // Add or Update a new user to JumpCloud
 //
-func (jc JCAPI) addUpdateUser(op JCOp, user JCUser) (string, JCError) {
+func (jc JCAPI) AddUpdateUser(op JCOp, user JCUser) (userId string, err JCError) {
 	if user.Password != "" {
 		user.PasswordDate = getTimeString()
 	}
@@ -196,7 +190,7 @@ func (jc JCAPI) addUpdateUser(op JCOp, user JCUser) (string, JCError) {
 		url += "/" + user.Id
 	}
 
-	jcUserRec, err := jc.do(mapJCOpToHTTP(op), url, data)
+	jcUserRec, err := jc.Do(MapJCOpToHTTP(op), url, data)
 	if err != nil {
 		return "", fmt.Errorf("ERROR: Could not post new JCUser object, err='%s'", err)
 	}
@@ -208,11 +202,13 @@ func (jc JCAPI) addUpdateUser(op JCOp, user JCUser) (string, JCError) {
 		return "", fmt.Errorf("ERROR: JumpCloud did not return the same email - this should never happen!")
 	}
 
-	return returnUser.Id, nil
+	userId = returnUser.Id
+
+	return
 }
 
-func (jc JCAPI) deleteUser(user JCUser) JCError {
-	_, err := jc.delete(fmt.Sprintf("/systemusers/%s", user.Id))
+func (jc JCAPI) DeleteUser(user JCUser) JCError {
+	_, err := jc.Delete(fmt.Sprintf("/systemusers/%s", user.Id))
 	if err != nil {
 		return fmt.Errorf("ERROR: Could not delete user '%s': err='%s'", user.Email, err)
 	}
