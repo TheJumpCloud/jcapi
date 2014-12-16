@@ -31,7 +31,7 @@ type JCUser struct {
 	ExternalDN         string `json:"external_dn,omitempty"`
 	ExternalSourceType string `json:"external_source_type,omitempty"`
 
-	tags []JCTag
+	Tags []JCTag
 }
 
 func UsersToString(users []JCUser) string {
@@ -51,7 +51,7 @@ func (jcuser JCUser) ToString() string {
 	returnVal := fmt.Sprintf("id=[%s] - userName=[%s] - email=[%s] - externally_managed=[%t] - sudo=[%t] - Uid=%s - Gid=%s - enableManagedUid=%t\n", jcuser.Id, jcuser.UserName,
 		jcuser.Email, jcuser.ExternallyManaged, jcuser.Sudo, jcuser.Uid, jcuser.Gid, jcuser.EnableManagedUid)
 
-	for _, tag := range jcuser.tags {
+	for _, tag := range jcuser.Tags {
 		returnVal += fmt.Sprintf("\t%s\n", tag.ToString())
 	}
 

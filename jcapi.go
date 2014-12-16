@@ -172,7 +172,7 @@ func (user *JCUser) AddJCTags(tags []JCTag) {
 	for _, tag := range tags {
 		for _, systemUser := range tag.SystemUsers {
 			if systemUser == user.Id {
-				user.tags = append(user.tags, tag)
+				user.Tags = append(user.Tags, tag)
 			}
 		}
 	}
