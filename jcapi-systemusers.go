@@ -186,7 +186,7 @@ func (jc JCAPI) AddUpdateUser(op JCOp, user JCUser) (userId string, err JCError)
 	}
 
 	url := "/systemusers"
-	if op == update {
+	if op == Update {
 		url += "/" + user.Id
 	}
 

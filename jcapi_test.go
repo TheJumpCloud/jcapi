@@ -33,7 +33,7 @@ func TestSystemUsers(t *testing.T) {
 
 	newUser := MakeTestUser()
 
-	userId, err := jcapi.AddUpdateUser(insert, newUser)
+	userId, err := jcapi.AddUpdateUser(Insert, newUser)
 	if err != nil {
 		t.Fatalf("Could not add new user ('%s'), err='%s'", newUser.ToString(), err)
 	}
@@ -62,7 +62,7 @@ func TestSystemUsers(t *testing.T) {
 
 	allUsers[foundUser].Email = "newtestemail@jumpcloud.com"
 
-	newUserId, err := jcapi.AddUpdateUser(update, allUsers[foundUser])
+	newUserId, err := jcapi.AddUpdateUser(Update, allUsers[foundUser])
 	if err != nil {
 		t.Fatalf("Could not modify email on the just-added user ('%s'), err='%s'", allUsers[foundUser].ToString(), err)
 	}
@@ -98,7 +98,7 @@ func TestTags(t *testing.T) {
 
 	newTag := MakeTestTag()
 
-	tagId, err := jcapi.AddUpdateTag(insert, newTag)
+	tagId, err := jcapi.AddUpdateTag(Insert, newTag)
 	if err != nil {
 		t.Fatalf("Could not add new tag ('%s'), err='%s'", newTag.ToString(), err)
 	}
@@ -121,7 +121,7 @@ func TestTags(t *testing.T) {
 
 	allTags[foundTag].Name = "Test tag #1 with a name change"
 
-	newTagId, err := jcapi.AddUpdateTag(update, allTags[foundTag])
+	newTagId, err := jcapi.AddUpdateTag(Update, allTags[foundTag])
 	if err != nil {
 		t.Fatalf("Could not change the test tag's name, err='%s'", err)
 	}
@@ -155,7 +155,7 @@ func TestIDSources(t *testing.T) {
 
 	e := MakeIDSource()
 
-	result, err := jcapi.AddUpdateIDSource(insert, e)
+	result, err := jcapi.AddUpdateIDSource(Insert, e)
 	if err != nil {
 		t.Fatalf("Could not post a new ID Source object, err='%s'", err)
 	}

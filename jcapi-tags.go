@@ -132,7 +132,7 @@ func (jc JCAPI) AddUpdateTag(op JCOp, tag JCTag) (tagId string, err JCError) {
 	}
 
 	url := "/tags"
-	if op == update {
+	if op == Update {
 		url += "/" + tag.Id
 	}
 

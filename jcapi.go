@@ -17,11 +17,11 @@ const (
 type JCOp uint8
 
 const (
-	read   = 1
-	insert = 2
-	update = 3
-	delete = 4
-	list   = 5
+	Read   = 1
+	Insert = 2
+	Update = 3
+	Delete = 4
+	List   = 5
 )
 
 type JCAPI struct {
@@ -110,23 +110,23 @@ func (jc JCAPI) setHeader(req *http.Request) {
 }
 
 func (jc JCAPI) Post(url string, data []byte) (interface{}, JCError) {
-	return jc.Do(MapJCOpToHTTP(insert), url, data)
+	return jc.Do(MapJCOpToHTTP(Insert), url, data)
 }
 
 func (jc JCAPI) Put(url string, data []byte) (interface{}, JCError) {
-	return jc.Do(MapJCOpToHTTP(update), url, data)
+	return jc.Do(MapJCOpToHTTP(Update), url, data)
 }
 
 func (jc JCAPI) Delete(url string) (interface{}, JCError) {
-	return jc.Do(MapJCOpToHTTP(delete), url, nil)
+	return jc.Do(MapJCOpToHTTP(Delete), url, nil)
 }
 
 func (jc JCAPI) Get(url string) (interface{}, JCError) {
-	return jc.Do(MapJCOpToHTTP(read), url, nil)
+	return jc.Do(MapJCOpToHTTP(Read), url, nil)
 }
 
 func (jc JCAPI) List(url string) (interface{}, JCError) {
-	return jc.Do(MapJCOpToHTTP(list), url, nil)
+	return jc.Do(MapJCOpToHTTP(List), url, nil)
 }
 
 func (jc JCAPI) Do(op, url string, data []byte) (interface{}, JCError) {
@@ -182,15 +182,15 @@ func MapJCOpToHTTP(op JCOp) string {
 	var returnVal string
 
 	switch op {
-	case read:
+	case Read:
 		returnVal = "GET"
-	case insert:
+	case Insert:
 		returnVal = "POST"
-	case update:
+	case Update:
 		returnVal = "PUT"
-	case delete:
+	case Delete:
 		returnVal = "DELETE"
-	case list:
+	case List:
 		returnVal = "LIST"
 	}
 
