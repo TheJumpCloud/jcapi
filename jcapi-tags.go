@@ -23,13 +23,13 @@ type JCTag struct {
 	ExternalDN         string `json:"externalDN,omitempty"`
 	ExternalSourceType string `json:"externalSourceType,omitempty"`
 
-	applyToJumpCloud bool
+	ApplyToJumpCloud bool
 }
 
 func (tag JCTag) ToString() string {
 	return fmt.Sprintf("tag id=%s - name='%s' - groupName='%s' - expires='%s' - systems='%s' - systemusers='%s' - applyToJC='%t' - externally_managed='%t' (%s)",
 		tag.Id, tag.Name, tag.GroupName, tag.ExpirationTime, strings.Join(tag.Systems, ","),
-		strings.Join(tag.SystemUsers, ","), tag.applyToJumpCloud, tag.ExternallyManaged, tag.ExternalDN)
+		strings.Join(tag.SystemUsers, ","), tag.ApplyToJumpCloud, tag.ExternallyManaged, tag.ExternalDN)
 }
 
 func GetTagNames(tags []JCTag) []string {
