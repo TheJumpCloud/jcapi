@@ -16,7 +16,7 @@ const (
 
 type JCOp uint8
 
-var (
+const (
 	Read   JCOp = 1
 	Insert JCOp = 2
 	Update JCOp = 3
