@@ -16,12 +16,12 @@ const (
 
 type JCOp uint8
 
-const (
-	Read   = 1
-	Insert = 2
-	Update = 3
-	Delete = 4
-	List   = 5
+var (
+	Read   JCOp = 1
+	Insert JCOp = 2
+	Update JCOp = 3
+	Delete JCOp = 4
+	List   JCOp = 5
 )
 
 type JCAPI struct {
