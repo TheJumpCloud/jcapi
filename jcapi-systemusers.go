@@ -48,8 +48,12 @@ func (jcuser JCUser) ToString() string {
 	//
 	// WARNING: Never output password via this method, it could be logged in clear text
 	//
-	returnVal := fmt.Sprintf("id=[%s] - userName=[%s] - email=[%s] - externally_managed=[%t] - sudo=[%t] - Uid=%s - Gid=%s - enableManagedUid=%t\n", jcuser.Id, jcuser.UserName,
-		jcuser.Email, jcuser.ExternallyManaged, jcuser.Sudo, jcuser.Uid, jcuser.Gid, jcuser.EnableManagedUid)
+	returnVal := fmt.Sprintf("JCUSER: Id=[%s] - UserName=[%s] - FName/LName=[%s/%s] - Email=[%s] - sudo=[%t] - Uid=%s - Gid=%s - enableManagedUid=%t\n",
+		jcuser.Id, jcuser.UserName, jcuser.FirstName, jcuser.LastName,
+		jcuser.Email, jcuser.Sudo, jcuser.Uid, jcuser.Gid, jcuser.EnableManagedUid)
+
+	returnVal += fmt.Sprintf("JCUSER: ExternallyManaged=[%t] - ExternalDN=[%s] - ExternalSourceType=[%s]\n",
+		jcuser.ExternallyManaged, jcuser.ExternalDN, jcuser.ExternalSourceType)
 
 	for _, tag := range jcuser.Tags {
 		returnVal += fmt.Sprintf("\t%s\n", tag.ToString())
@@ -140,21 +144,69 @@ func (jc JCAPI) GetSystemUserByEmail(email string, withTags bool) ([]JCUser, JCE
 	return returnVal, nil
 }
 
+func (jc JCAPI) GetSystemUserById(userId string, withTags bool) (user JCUser, err JCError) {
+	url := fmt.Sprintf("/systemusers/%s", userId)
+
+	retVal, err := jc.Get(url)
+	if err != nil {
+		err = fmt.Errorf("ERROR: Could not get system user by ID '%s', err='%s'", userId, err)
+	}
+
+	if retVal != nil {
+		getJCUserFieldsFromInterface(retVal.(map[string]interface{}), &user)
+
+		if withTags {
+			// I should be able to use err below as the err return value, but there's
+			// a compiler bug here in that it thinks a := of err is shadowed here,
+			// even though tags should be the only variable declared with the :=
+			tags, err2 := jc.GetAllTags()
+			if err != nil {
+				err = fmt.Errorf("ERROR: Could not get tags, err='%s'", err2)
+				return
+			}
+
+			user.AddJCTags(tags)
+		}
+	}
+
+	return
+}
+
 func (jc JCAPI) GetSystemUsers(withTags bool) (userList []JCUser, err JCError) {
 	var returnVal []JCUser
 
 	for skip := 0; skip == 0 || len(returnVal) == searchLimit; skip += searchSkipInterval {
 		url := fmt.Sprintf("/systemusers?sort=username&skip=%d&limit=%d", skip, searchLimit)
 
-		jcUserRec, err := jc.Get(url)
+		jcUserRec, err2 := jc.Get(url)
 		if err != nil {
-			return nil, fmt.Errorf("ERROR: Post to JumpCloud failed, err='%s'", err)
+			return nil, fmt.Errorf("ERROR: Post to JumpCloud failed, err='%s'", err2)
 		}
 
+		// We really only care about the ID for the following call...
 		returnVal = getJCUsersFromInterface(jcUserRec)
 
 		for i, _ := range returnVal {
-			userList = append(userList, returnVal[i])
+			if returnVal[i].Id != "" {
+
+				//
+				// Get the rest of the user record, which includes details like
+				// the externalDN...
+				//
+				// We'll get all the tags one time later, so don't get the tags on this call...
+				//
+				// See above about the compiler error that requires me to use err2 instead of err below...
+				//
+				detailedUser, err2 := jc.GetSystemUserById(returnVal[i].Id, false)
+				if err != nil {
+					err = fmt.Errorf("ERROR: Could not get details for user ID '%s', err='%s'", returnVal[i].Id, err2)
+					return
+				}
+
+				if detailedUser.Id != "" {
+					userList = append(userList, detailedUser)
+				}
+			}
 		}
 	}
 

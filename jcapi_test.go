@@ -5,8 +5,9 @@ import (
 )
 
 const (
-	testAPIKey  string = "a7bb8f46cce718636f31e29a64db6200f0304701"
-	testUrlBase string = "https://test-console.jumpcloud.com/api"
+	testAPIKey  string = "846404f246b5ae207798fb4f0ece2c097b26ffca"
+	testUrlBase string = "http://localhost:3004/api"
+	authUrlBase string = "http://localhost:3000"
 )
 
 func MakeTestUser() (user JCUser) {
@@ -16,10 +17,10 @@ func MakeTestUser() (user JCUser) {
 		LastName:          "User",
 		Email:             "testuser@jumpcloud.com",
 		Password:          "test!@#$ADSF",
-		Activated:         false,
+		Activated:         true,
 		Sudo:              true,
-		Uid:               "26753",
-		Gid:               "26753",
+		Uid:               "2244",
+		Gid:               "2244",
 		EnableManagedUid:  true,
 		TagList:           make([]string, 0),
 		ExternallyManaged: false,
@@ -28,7 +29,56 @@ func MakeTestUser() (user JCUser) {
 	return
 }
 
+func TestSystemUsersByOne(t *testing.T) {
+	jcapi := NewJCAPI(testAPIKey, testUrlBase)
+
+	newUser := MakeTestUser()
+
+	userId, err := jcapi.AddUpdateUser(Insert, newUser)
+	if err != nil {
+		t.Fatalf("Could not add new user ('%s'), err='%s'", newUser.ToString(), err)
+	}
+
+	t.Logf("Returned userId=%s", userId)
+
+	retrievedUser, err := jcapi.GetSystemUserById(userId, true)
+	if err != nil {
+		t.Fatalf("Could not get the system user I just added, err='%s'", err)
+	}
+
+	if userId != retrievedUser.Id {
+		t.Fatalf("Got back a different user ID than expected, this shouldn't happen! Initial userId='%s' - returned object: '%s'",
+			userId, retrievedUser.ToString())
+	}
+
+	retrievedUser.Email = "newtestemail@jumpcloud.com"
+
+	// We have to do the following because of bug: https://www.pivotaltracker.com/story/show/84876992
+	retrievedUser.Uid = "2244"
+	retrievedUser.Gid = "2244"
+
+	newUserId, err := jcapi.AddUpdateUser(Update, retrievedUser)
+	if err != nil {
+		t.Fatalf("Could not modify email on the just-added user ('%s'), err='%s'", retrievedUser.ToString(), err)
+	}
+
+	if userId != newUserId {
+		t.Fatalf("The user ID of the updated user changed across updates, this should never happen!")
+	}
+
+	err = jcapi.DeleteUser(retrievedUser)
+	if err != nil {
+		t.Fatalf("Could not delete user ('%s'), err='%s'", retrievedUser.ToString(), err)
+	}
+
+	return
+}
+
 func TestSystemUsers(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping potentially long test in short mode")
+	}
+
 	jcapi := NewJCAPI(testAPIKey, testUrlBase)
 
 	newUser := MakeTestUser()
@@ -61,6 +111,10 @@ func TestSystemUsers(t *testing.T) {
 	}
 
 	allUsers[foundUser].Email = "newtestemail@jumpcloud.com"
+
+	// We have to do the following because of bug: https://www.pivotaltracker.com/story/show/84876992
+	allUsers[foundUser].Uid = "2244"
+	allUsers[foundUser].Gid = "2244"
 
 	newUserId, err := jcapi.AddUpdateUser(Update, allUsers[foundUser])
 	if err != nil {
@@ -194,4 +248,58 @@ func TestIDSources(t *testing.T) {
 			t.Fatalf("ERROR: Delete on '%s' failed, err='%s'", eGet.ToString(), err)
 		}
 	}
+}
+
+func checkAuth(t *testing.T, expectedResult bool, username, password, tag string) {
+	authjc := NewJCAPI(testAPIKey, authUrlBase)
+
+	userAuth, err := authjc.AuthUser(username, password, tag)
+	if err != nil {
+		t.Fatalf("Could not authenticate the user '%s' with password '%s' and tag '%s' err='%s'", username, password, tag, err)
+	}
+
+	if userAuth != expectedResult {
+		t.Fatalf("userAuth=%t, we expected %s for user='%s', pass='%s', tag='%s'", userAuth, expectedResult, username, password, tag)
+	}
+}
+
+func TestRestAuth(t *testing.T) {
+	jcapi := NewJCAPI(testAPIKey, testUrlBase)
+
+	newUser := MakeTestUser()
+
+	userId, err := jcapi.AddUpdateUser(Insert, newUser)
+	if err != nil {
+		t.Fatalf("Could not add new user ('%s'), err='%s'", newUser.ToString(), err)
+	}
+	newUser.Id = userId
+	defer jcapi.DeleteUser(newUser)
+
+	t.Logf("Returned userId=%s", userId)
+
+	checkAuth(t, true, newUser.UserName, newUser.Password, "")
+	checkAuth(t, false, newUser.UserName, newUser.Password, "mytesttag")
+	checkAuth(t, false, newUser.UserName, "a0938mbo", "")
+	checkAuth(t, false, "2309vnotauser", newUser.Password, "")
+	checkAuth(t, false, "", "", "")
+
+	//
+	// Now add a tag and put the user in it, and let's try all the tag checking stuff
+	//
+	newTag := MakeTestTag()
+
+	newTag.SystemUsers = append(newTag.SystemUsers, userId)
+
+	tagId, err := jcapi.AddUpdateTag(Insert, newTag)
+	if err != nil {
+		t.Fatalf("Could not add new tag ('%s'), err='%s'", newTag.ToString(), err)
+	}
+	newTag.Id = tagId
+	defer jcapi.DeleteTag(newTag)
+
+	t.Logf("Returned tagId=%d", tagId)
+
+	checkAuth(t, true, newUser.UserName, newUser.Password, newTag.Name)
+	checkAuth(t, false, newUser.UserName, newUser.Password, "not a real tag")
+	checkAuth(t, true, newUser.UserName, newUser.Password, "")
 }
