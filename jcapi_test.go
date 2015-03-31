@@ -7,7 +7,7 @@ import (
 const (
 	testAPIKey  string = "<your-API-key-here>"
 	testUrlBase string = "https://console.jumpcloud.com/api"
-	authUrlBase string = "https://auth.jumpcloud.com/authenticate"
+	authUrlBase string = "https://auth.jumpcloud.com"
 )
 
 func MakeTestUser() (user JCUser) {
