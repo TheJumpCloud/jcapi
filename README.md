@@ -2,6 +2,7 @@ jcapi
 =====
 
 *JumpCloud's Go (golang) REST API SDK (BETA)*
+Copyright (C) 2015 JumpCloud
 
 This JumpCloud SDK is in beta form. The only available documentation comes in the form of the included examples and from jcapi_test.go (best stuff is in there).
 
