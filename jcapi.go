@@ -96,8 +96,8 @@ func getTimeString() string {
 func (jc JCAPI) emailFilter(email string) []byte {
 
 	//
-	// Ideally, this would be generalized to take a map[string]string
-	// but, that doesn't elicit the correct JSON output for the JumpCloud
+	// Ideally, this would be generalized to take a map[string]string,
+	// that doesn't elicit the correct JSON output for the JumpCloud
 	// filters in json.Marshal()
 	//
 	return []byte(fmt.Sprintf("{\"filter\": [{\"email\" : \"%s\"}]}", email))
