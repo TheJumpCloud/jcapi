@@ -5,9 +5,9 @@ import (
 )
 
 const (
-	testAPIKey  string = "846404f246b5ae207798fb4f0ece2c097b26ffca"
-	testUrlBase string = "http://localhost:3004/api"
-	authUrlBase string = "http://localhost:3000"
+	testAPIKey  string = "<your-API-key-here>"
+	testUrlBase string = "https://console.jumpcloud.com/api"
+	authUrlBase string = "https://console.jumpcloud.com"
 )
 
 func MakeTestUser() (user JCUser) {
