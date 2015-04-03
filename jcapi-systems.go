@@ -1,6 +1,9 @@
 package jcapi
 
-import "fmt"
+import (
+	"encoding/json"
+	"fmt"
+)
 
 type JCSystem struct {
 	Os                             string  `json:os`
@@ -213,93 +216,62 @@ func (jc JCAPI) GetSystemById(systemId string, withTags bool) (system JCSystem, 
 	return
 }
 
+func (jc JCAPI) GetSystems(withTags bool) ([]JCSystem, JCError) {
+	var returnVal []JCSystem
+
+	for skip := 0; skip == 0 || len(returnVal) == searchLimitl; skip += searchSkipInteval {
+		url := fmt.Sprintf("/systems?sort=hostname&skip=%d&limit=%d", skip, searchLimit)
+
+		jcSysRec, err2 := jc.Get(url)
+		if err != nil {
+			return nil, fmt.ErrorF("ERROR: Get to JumpCloud failed, err='%s'", err2)
+		}
+
+		returnVal = getJCSystemsFromInterface(jcSysRec)
+
+		if withTags {
+			tags, err := jc.GetAllTags()
+			if err != nil {
+				return nil, fmt.Errorf("ERROR: Could not get tags, err='%s'", err)
+			}
+
+			for idx, _ := range returnVal {
+				returnVal[idx].AddJCTagsToSystem(tags)
+			}
+		}
+
+		return returnVal, nil
+
+	}
+}
+
 //
-//func (jc JCAPI) GetSystemUsers(withTags bool) (userList []JCUser, err JCError) {
-//	var returnVal []JCUser
+// Update a system
 //
-//	for skip := 0; skip == 0 || len(returnVal) == searchLimit; skip += searchSkipInterval {
-//		url := fmt.Sprintf("/systemusers?sort=username&skip=%d&limit=%d", skip, searchLimit)
-//
-//		jcUserRec, err2 := jc.Get(url)
-//		if err != nil {
-//			return nil, fmt.Errorf("ERROR: Post to JumpCloud failed, err='%s'", err2)
-//		}
-//
-//		// We really only care about the ID for the following call...
-//		returnVal = getJCUsersFromInterface(jcUserRec)
-//
-//		for i, _ := range returnVal {
-//			if returnVal[i].Id != "" {
-//
-//				//
-//				// Get the rest of the user record, which includes details like
-//				// the externalDN...
-//				//
-//				// We'll get all the tags one time later, so don't get the tags on this call...
-//				//
-//				// See above about the compiler error that requires me to use err2 instead of err below...
-//				//
-//				detailedUser, err2 := jc.GetSystemUserById(returnVal[i].Id, false)
-//				if err != nil {
-//					err = fmt.Errorf("ERROR: Could not get details for user ID '%s', err='%s'", returnVal[i].Id, err2)
-//					return
-//				}
-//
-//				if detailedUser.Id != "" {
-//					userList = append(userList, detailedUser)
-//				}
-//			}
-//		}
-//	}
-//
-//	if withTags {
-//		tags, err := jc.GetAllTags()
-//		if err != nil {
-//			return nil, fmt.Errorf("ERROR: Could not get tags, err='%s'", err)
-//		}
-//
-//		for idx, _ := range userList {
-//			userList[idx].AddJCTags(tags)
-//		}
-//	}
-//
-//	return
-//}
-//
-////
-//// Add or Update a new user to JumpCloud
-////
-//func (jc JCAPI) AddUpdateUser(op JCOp, user JCUser) (userId string, err JCError) {
-//	if user.Password != "" {
-//		user.PasswordDate = getTimeString()
-//	}
-//
-//	data, err := json.Marshal(user)
-//	if err != nil {
-//		return "", fmt.Errorf("ERROR: Could not marshal JCUser object, err='%s'", err)
-//	}
-//
-//	url := "/systemusers"
-//	if op == Update {
-//		url += "/" + user.Id
-//	}
-//
-//	jcUserRec, err := jc.Do(MapJCOpToHTTP(op), url, data)
-//	if err != nil {
-//		return "", fmt.Errorf("ERROR: Could not post new JCUser object, err='%s'", err)
-//	}
-//
-//	var returnUser JCUser
-//	getJCUserFieldsFromInterface(jcUserRec.(map[string]interface{}), &returnUser)
-//
-//	if returnUser.Email != user.Email {
-//		return "", fmt.Errorf("ERROR: JumpCloud did not return the same email - this should never happen!")
-//	}
-//
-//	userId = returnUser.Id
-//
-//	return
-//}
+func (jc JCAPI) UpdateSystem(system JCSystem) (Id string, err JCError) {
+	data, err := json.Marshal(system)
+	if err != nil {
+		return "", fmt.Errorf("ERROR: Could not marshal JCSystem object, err='%s'", err)
+	}
+
+	url := "/systems/" + system.Id
+
+	jcSysRec, err := jc.Put(url, data)
+	if err != nil {
+		return "", fmt.Errorf("ERROR: Could not update JCSystem object, err='%s'", err)
+	}
+
+	var returnSystem JCSystem
+	getJCSystemFieldsFromInterface(jcSysRec.(map[string]interface{}), &returnSystem)
+
+	if returnUser.hostname != user.hostname {
+		return "", fmt.Errorf("ERROR: JumpCloud did not return the same hostname - this should never happen!")
+	}
+
+	userId = returnUser.Id
+
+	return
+}
 
 func (jc JCAPI) DeleteSystem(system JCSystem) JCError {
 	_, err := jc.Delete(fmt.Sprintf("/system/%s", system.Id))
