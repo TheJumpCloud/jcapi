@@ -3,29 +3,28 @@ package jcapi
 import "fmt"
 
 type JCSystem struct {
-	Os                             string `json:os`
-	TemplateNmae                   string `json:templateName`
-	AllowSshRootLogin              bool   `json:allowSsgRootLogin`
-	Id                             string `json:id`
-	LastContact                    string `json:lastContact`
-	RemoteIP                       string `json:remoteIP`
-	Active                         bool   `json:active`
-	SshRootEnabled                 bool   `json:sshRootEnabled`
-	AmazonInstanceID               string `json:amazonInstanceID,omitempty`
-	SshPassEnabled                 bool   `json:sshPassEnabled`
-	Version                        string `json:version`
-	AgentVersion                   string `json:agentVersion`
-	AllowPublicKeyAuth             bool   `json:allowPublicKeyAuthentication`
-	V                              string `json:__v,omitempty`
-	Organization                   string `json:organization`
-	Created                        string `json:created`
-	Arch                           string `json:arch`
-	SystemTimezone                 string `json:systemTimeZone`
-	AllowSshPasswordAuthentication bool   `json:allowSshPasswordAuthentication`
-	DisplayName                    string `json:displayName`
-	ModifySSHDConfig               bool   `json:modifySSHDConfig`
-	AllowMultiFactorAuthentication bool   `json:allowMultiFactorAuthentication`
-	Hostname                       string `json:hostname`
+	Os                             string  `json:os`
+	TemplateName                   string  `json:templateName`
+	AllowSshRootLogin              bool    `json:allowSsgRootLogin`
+	Id                             string  `json:id`
+	LastContact                    string  `json:lastContact`
+	RemoteIP                       string  `json:remoteIP`
+	Active                         bool    `json:active`
+	SshRootEnabled                 bool    `json:sshRootEnabled`
+	AmazonInstanceID               string  `json:amazonInstanceID,omitempty`
+	SshPassEnabled                 bool    `json:sshPassEnabled`
+	Version                        string  `json:version`
+	AgentVersion                   string  `json:agentVersion`
+	AllowPublicKeyAuth             bool    `json:allowPublicKeyAuthentication`
+	Organization                   string  `json:organization`
+	Created                        string  `json:created`
+	Arch                           string  `json:arch`
+	SystemTimezone                 float64 `json:systemTimeZone`
+	AllowSshPasswordAuthentication bool    `json:allowSshPasswordAuthentication`
+	DisplayName                    string  `json:displayName`
+	ModifySSHDConfig               bool    `json:modifySSHDConfig`
+	AllowMultiFactorAuthentication bool    `json:allowMultiFactorAuthentication`
+	Hostname                       string  `json:hostname`
 
 	Patches               []string `json:patches`
 	SshParamList          []string `json:sshParams`
@@ -78,9 +77,9 @@ func (jcsystem JCSystem) ToString() string {
 	return returnVal
 }
 
-func getJCSSHDParamFieldsFromInterface(fields map[string]string, params *JCSSHDParam) {
-	params.Name = fields["name"]
-	params.Value = fields["value"]
+func getJCSSHDParamFieldsFromInterface(fields map[string]interface{}, params *JCSSHDParam) {
+	params.Name = fields["name"].(string)
+	params.Value = fields["value"].(string)
 }
 
 func getJCSSHDParamFromArray(paramArray []interface{}) []JCSSHDParam {
@@ -88,7 +87,7 @@ func getJCSSHDParamFromArray(paramArray []interface{}) []JCSSHDParam {
 	returnVal = make([]JCSSHDParam, len(paramArray))
 
 	for idx, rec := range paramArray {
-		getJCSSHDParamFieldsFromInterface(rec.(map[string]string), &returnVal[idx])
+		getJCSSHDParamFieldsFromInterface(rec.(map[string]interface{}), &returnVal[idx])
 	}
 
 	return returnVal
@@ -115,29 +114,28 @@ func getJCNetworkInterfacesFromArray(nicArray []interface{}) []JCNetworkInterfac
 
 func getJCSystemFieldsFromInterface(fields map[string]interface{}, system *JCSystem) {
 	system.Os = fields["os"].(string)
-	system.TemplateNmae = fields["os"].(string)
-	system.AllowSshRootLogin = fields["os"].(bool)
-	system.Id = fields["os"].(string)
-	system.LastContact = fields[""].(string)
-	system.RemoteIP = fields[""].(string)
-	system.Active = fields[""].(bool)
-	system.SshRootEnabled = fields[""].(bool)
-	system.SshPassEnabled = fields[""].(bool)
-	system.Version = fields[""].(string)
-	system.AgentVersion = fields[""].(string)
-	system.AllowPublicKeyAuth = fields[""].(bool)
-	system.V = fields[""].(string)
-	system.Organization = fields[""].(string)
-	system.Created = fields[""].(string)
-	system.Arch = fields[""].(string)
-	system.SystemTimezone = fields[""].(string)
-	system.AllowSshPasswordAuthentication = fields[""].(bool)
-	system.DisplayName = fields[""].(string)
-	system.ModifySSHDConfig = fields[""].(bool)
-	system.AllowMultiFactorAuthentication = fields[""].(bool)
-	system.Hostname = fields[""].(string)
+	system.TemplateName = fields["templateName"].(string)
+	system.AllowSshRootLogin = fields["allowSshRootLogin"].(bool)
+	system.Id = fields["id"].(string)
+	system.LastContact = fields["lastContact"].(string)
+	system.RemoteIP = fields["remoteIP"].(string)
+	system.Active = fields["active"].(bool)
+	system.SshRootEnabled = fields["sshRootEnabled"].(bool)
+	system.SshPassEnabled = fields["sshPassEnabled"].(bool)
+	system.Version = fields["version"].(string)
+	system.AgentVersion = fields["agentVersion"].(string)
+	system.AllowPublicKeyAuth = fields["allowPublicKeyAuthentication"].(bool)
+	system.Organization = fields["organization"].(string)
+	system.Created = fields["created"].(string)
+	system.Arch = fields["arch"].(string)
+	system.SystemTimezone = fields["systemTimezone"].(float64)
+	system.AllowSshPasswordAuthentication = fields["allowSshPasswordAuthentication"].(bool)
+	system.DisplayName = fields["displayName"].(string)
+	system.ModifySSHDConfig = fields["modifySSHDConfig"].(bool)
+	system.AllowMultiFactorAuthentication = fields["allowMultiFactorAuthentication"].(bool)
+	system.Hostname = fields["hostname"].(string)
 
-	system.SshdParams = getJCSSHDParamFromArray(fields["sshParams"].([]interface{}))
+	system.SshdParams = getJCSSHDParamFromArray(fields["sshdParams"].([]interface{}))
 	system.NetworkInterfaces = getJCNetworkInterfacesFromArray(fields["networkInterfaces"].([]interface{}))
 
 	if _, exists := fields["amazonInstanceID"]; exists {
