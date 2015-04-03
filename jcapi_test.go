@@ -5,7 +5,7 @@ import (
 )
 
 const (
-	testAPIKey  string = "<your-API-key-here>"
+	testAPIKey  string = "50125a78f547d14ca20600d9575fde28c68ad87f"
 	testUrlBase string = "https://console.jumpcloud.com/api"
 	authUrlBase string = "https://auth.jumpcloud.com"
 )
