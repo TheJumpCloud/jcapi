@@ -178,6 +178,17 @@ func (user *JCUser) AddJCTags(tags []JCTag) {
 	}
 }
 
+// Add all the tags of which the system is a part to the JCSystem object
+func (system *JCSystem) AddJCTagsToSystem(tags []JCTag) {
+	for _, tag := range tags {
+		for _, sys := range tag.Systems {
+			if sys == system.Id {
+				system.Tags = append(system.Tags, tag)
+			}
+		}
+	}
+}
+
 func MapJCOpToHTTP(op JCOp) string {
 	var returnVal string
 
@@ -209,6 +220,16 @@ func (jc JCAPI) extractStringArray(input []interface{}) []string {
 
 	return returnVal
 }
+
+//func (jc JCAPI) extractMapArray(input []interface{}) []map[string]string {
+//	var returnVal []map[string]string
+//
+//	for _, mp := range input {
+//		returnVal = append(returnVal, mp.(interface{}))
+//	}
+//
+//	return returnVal
+//}
 
 func getStringOrNil(input interface{}) string {
 	returnVal := ""
