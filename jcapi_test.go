@@ -1,6 +1,7 @@
 package jcapi
 
 import (
+	"fmt"
 	"os"
 	"testing"
 )
@@ -29,6 +30,15 @@ func MakeTestUser() (user JCUser) {
 	}
 
 	return
+}
+
+func TestGetSystemByOne(t *testing.T) {
+	jcapi := NewJCAPI(testAPIKey, testUrlBase)
+	system, err := jcapi.GetSystemById("551c5326ace306105f000b32", false)
+	if err != nil {
+		t.Fatalf("couldn't get system")
+	}
+	fmt.Println(system.Hostname)
 }
 
 func TestSystemUsersByOne(t *testing.T) {
