@@ -1,14 +1,16 @@
 package jcapi
 
 import (
+	"os"
 	"testing"
 )
 
 const (
-	testAPIKey  string = "<your-API-key-here>"
 	testUrlBase string = "https://console.jumpcloud.com/api"
 	authUrlBase string = "https://auth.jumpcloud.com"
 )
+
+var testAPIKey string = os.Getenv("JUMPCLOUD_APIKEY")
 
 func MakeTestUser() (user JCUser) {
 	user = JCUser{
