@@ -34,11 +34,21 @@ func MakeTestUser() (user JCUser) {
 
 func TestGetSystemByOne(t *testing.T) {
 	jcapi := NewJCAPI(testAPIKey, testUrlBase)
-	system, err := jcapi.GetSystemById("551c5326ace306105f000b32", false)
+	system, err := jcapi.GetSystemById("551c5326ace306105f000b32", true)
 	if err != nil {
 		t.Fatalf("couldn't get system")
 	}
 	fmt.Println(system.Hostname)
+	fmt.Println(system.Tags)
+}
+
+func TestSystemsSearch(t *testing.T) {
+	jcapi := NewJCAPI(testAPIKey, testUrlBase)
+	systems, err := jcapi.GetSystemByhostname("nat", true)
+	if err != nil {
+		t.Fatalf("couldn't get system")
+	}
+	fmt.Println(systems)
 }
 
 func TestSystemUsersByOne(t *testing.T) {
