@@ -160,31 +160,31 @@ func getJCSystemsFromInterface(systemInt interface{}) []JCSystem {
 	return returnVal
 }
 
-//// Executes a search by email via the JumpCloud API
-//func (jc JCAPI) GetSystemUserByEmail(email string, withTags bool) ([]JCUser, JCError) {
-//	var returnVal []JCUser
-//
-//	jcUserRec, err := jc.Post("/search/systemusers", jc.emailFilter(email))
-//	if err != nil {
-//		return nil, fmt.Errorf("ERROR: Post to JumpCloud failed, err='%s'", err)
-//	}
-//
-//	returnVal = getJCUsersFromInterface(jcUserRec)
-//
-//	if withTags {
-//		tags, err := jc.GetAllTags()
-//		if err != nil {
-//			return nil, fmt.Errorf("ERROR: Could not get tags, err='%s'", err)
-//		}
-//
-//		for idx, _ := range returnVal {
-//			returnVal[idx].AddJCTags(tags)
-//		}
-//	}
-//
-//	return returnVal, nil
-//}
-//
+// Executes a search by hostname via the JumpCloud API
+func (jc JCAPI) GetSystemByhostname(hostname string, withTags bool) ([]JCSystem, JCError) {
+	var returnVal []JCSystem
+
+	jcSystemRec, err := jc.Post("/search/systems", jc.hostnameFilter(hostname))
+	if err != nil {
+		return nil, fmt.Errorf("ERROR: Post to JumpCloud failed, err='%s'", err)
+	}
+
+	returnVal = getJCSystemsFromInterface(jcSystemRec)
+
+	if withTags {
+		tags, err := jc.GetAllTags()
+		if err != nil {
+			return nil, fmt.Errorf("ERROR: Could not get tags, err='%s'", err)
+		}
+
+		for idx, _ := range returnVal {
+			returnVal[idx].AddJCTagsToSystem(tags)
+		}
+	}
+
+	return returnVal, nil
+}
+
 func (jc JCAPI) GetSystemById(systemId string, withTags bool) (system JCSystem, err JCError) {
 	url := fmt.Sprintf("/systems/%s", systemId)
 
