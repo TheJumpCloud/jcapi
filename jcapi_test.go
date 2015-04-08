@@ -1,7 +1,6 @@
 package jcapi
 
 import (
-	"fmt"
 	"os"
 	"testing"
 )
@@ -40,7 +39,7 @@ func TestSystems(t *testing.T) {
 	if len(systems) == 0 {
 		t.Fatalf("no systems found")
 	}
-	fmt.Printf("'%d' Systems found\n", len(systems))
+	//fmt.Printf("'%d' Systems found\n", len(systems))
 	testSystem := systems[0]
 	sysByID, err := jcapi.GetSystemById(testSystem.Id, true)
 	if testSystem.Id != sysByID.Id {
@@ -84,7 +83,7 @@ func TestSystems(t *testing.T) {
 	tagsAfter := updatedSystem.Tags
 	//fmt.Println(tagsAfter)
 	if len(tagsAfter) < len(allTags) {
-		fmt.Println(tagsAfter)
+		//fmt.Println(tagsAfter)
 		t.Fatalf("not enough tags!")
 	}
 	beforeTagList := make([]string, len(tagsBefore))
@@ -227,7 +226,7 @@ func MakeTestTag() (tag JCTag) {
 }
 
 func TestTags(t *testing.T) {
-	fmt.Println("in TestTags")
+	//fmt.Println("in TestTags")
 	jcapi := NewJCAPI(testAPIKey, testUrlBase)
 
 	newTag := MakeTestTag()

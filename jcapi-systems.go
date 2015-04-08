@@ -117,6 +117,8 @@ func getJCNetworkInterfacesFromArray(nicArray []interface{}) []JCNetworkInterfac
 }
 
 func getJCSystemFieldsFromInterface(fields map[string]interface{}, system *JCSystem) {
+	// doing this b/c the jsonSysRec that's returned from the update only has a subset
+	// of the fields
 	if _, exists := fields["os"]; exists {
 		system.Os = fields["os"].(string)
 	}
