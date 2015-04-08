@@ -29,6 +29,7 @@ type JCSystem struct {
 	AllowMultiFactorAuthentication bool    `json:allowMultiFactorAuthentication`
 	Hostname                       string  `json:hostname`
 
+	TagList               []string `json:"tags"`
 	Patches               []string `json:patches`
 	SshParamList          []string `json:sshParams`
 	PatchAlarmList        []string `json:patchAlarms`
@@ -116,30 +117,79 @@ func getJCNetworkInterfacesFromArray(nicArray []interface{}) []JCNetworkInterfac
 }
 
 func getJCSystemFieldsFromInterface(fields map[string]interface{}, system *JCSystem) {
-	system.Os = fields["os"].(string)
-	system.TemplateName = fields["templateName"].(string)
-	system.AllowSshRootLogin = fields["allowSshRootLogin"].(bool)
-	system.Id = fields["id"].(string)
-	system.LastContact = fields["lastContact"].(string)
-	system.RemoteIP = fields["remoteIP"].(string)
-	system.Active = fields["active"].(bool)
-	system.SshRootEnabled = fields["sshRootEnabled"].(bool)
-	system.SshPassEnabled = fields["sshPassEnabled"].(bool)
-	system.Version = fields["version"].(string)
-	system.AgentVersion = fields["agentVersion"].(string)
-	system.AllowPublicKeyAuth = fields["allowPublicKeyAuthentication"].(bool)
-	system.Organization = fields["organization"].(string)
-	system.Created = fields["created"].(string)
-	system.Arch = fields["arch"].(string)
-	system.SystemTimezone = fields["systemTimezone"].(float64)
-	system.AllowSshPasswordAuthentication = fields["allowSshPasswordAuthentication"].(bool)
-	system.DisplayName = fields["displayName"].(string)
-	system.ModifySSHDConfig = fields["modifySSHDConfig"].(bool)
-	system.AllowMultiFactorAuthentication = fields["allowMultiFactorAuthentication"].(bool)
-	system.Hostname = fields["hostname"].(string)
+	if _, exists := fields["os"]; exists {
+		system.Os = fields["os"].(string)
+	}
+	if _, exists := fields["templateName"]; exists {
+		system.TemplateName = fields["templateName"].(string)
+	}
+	if _, exists := fields["allowSsgRootLogin"]; exists {
+		system.AllowSshRootLogin = fields["allowSshRootLogin"].(bool)
+	}
+	if _, exists := fields["id"]; exists {
+		system.Id = fields["id"].(string)
+	} else if _, exists := fields["_id"]; exists {
+		system.Id = fields["_id"].(string)
 
-	system.SshdParams = getJCSSHDParamFromArray(fields["sshdParams"].([]interface{}))
-	system.NetworkInterfaces = getJCNetworkInterfacesFromArray(fields["networkInterfaces"].([]interface{}))
+	}
+	if _, exists := fields["lastContact"]; exists {
+		system.LastContact = fields["lastContact"].(string)
+	}
+	if _, exists := fields["remoteIP"]; exists {
+		system.RemoteIP = fields["remoteIP"].(string)
+	}
+	if _, exists := fields["active"]; exists {
+		system.Active = fields["active"].(bool)
+	}
+	if _, exists := fields["sshRootEnabled"]; exists {
+		system.SshRootEnabled = fields["sshRootEnabled"].(bool)
+	}
+	if _, exists := fields["sshPassEnabled"]; exists {
+		system.SshPassEnabled = fields["sshPassEnabled"].(bool)
+	}
+	if _, exists := fields["version"]; exists {
+		system.Version = fields["version"].(string)
+	}
+	if _, exists := fields["agentVersion"]; exists {
+		system.AgentVersion = fields["agentVersion"].(string)
+	}
+	if _, exists := fields["allowPublicKeyAuthentication"]; exists {
+		system.AllowPublicKeyAuth = fields["allowPublicKeyAuthentication"].(bool)
+	}
+	if _, exists := fields["organization"]; exists {
+		system.Organization = fields["organization"].(string)
+	}
+	if _, exists := fields["created"]; exists {
+		system.Created = fields["created"].(string)
+	}
+	if _, exists := fields["arch"]; exists {
+		system.Arch = fields["arch"].(string)
+	}
+	if _, exists := fields["systemTimeZone"]; exists {
+		system.SystemTimezone = fields["systemTimezone"].(float64)
+	}
+	if _, exists := fields["allowSshPasswordAuthentication"]; exists {
+		system.AllowSshPasswordAuthentication = fields["allowSshPasswordAuthentication"].(bool)
+	}
+	if _, exists := fields["displayName"]; exists {
+		system.DisplayName = fields["displayName"].(string)
+	}
+	if _, exists := fields["modifySSHDConfig"]; exists {
+		system.ModifySSHDConfig = fields["modifySSHDConfig"].(bool)
+	}
+	if _, exists := fields["allowMultiFactorAuthentication"]; exists {
+		system.AllowMultiFactorAuthentication = fields["allowMultiFactorAuthentication"].(bool)
+	}
+	if _, exists := fields["hostname"]; exists {
+		system.Hostname = fields["hostname"].(string)
+	}
+
+	if _, exists := fields["sshdParams"]; exists {
+		system.SshdParams = getJCSSHDParamFromArray(fields["sshdParams"].([]interface{}))
+	}
+	if _, exists := fields["networkInterfaces"]; exists {
+		system.NetworkInterfaces = getJCNetworkInterfacesFromArray(fields["networkInterfaces"].([]interface{}))
+	}
 
 	if _, exists := fields["amazonInstanceID"]; exists {
 		system.AmazonInstanceID = fields["amazonInstanceID"].(string)
@@ -219,12 +269,12 @@ func (jc JCAPI) GetSystemById(systemId string, withTags bool) (system JCSystem, 
 func (jc JCAPI) GetSystems(withTags bool) ([]JCSystem, JCError) {
 	var returnVal []JCSystem
 
-	for skip := 0; skip == 0 || len(returnVal) == searchLimitl; skip += searchSkipInteval {
+	for skip := 0; skip == 0 || len(returnVal) == searchLimit; skip += searchSkipInterval {
 		url := fmt.Sprintf("/systems?sort=hostname&skip=%d&limit=%d", skip, searchLimit)
 
 		jcSysRec, err2 := jc.Get(url)
-		if err != nil {
-			return nil, fmt.ErrorF("ERROR: Get to JumpCloud failed, err='%s'", err2)
+		if err2 != nil {
+			return nil, fmt.Errorf("ERROR: Get to JumpCloud failed, err='%s'", err2)
 		}
 
 		returnVal = getJCSystemsFromInterface(jcSysRec)
@@ -240,37 +290,36 @@ func (jc JCAPI) GetSystems(withTags bool) ([]JCSystem, JCError) {
 			}
 		}
 
-		return returnVal, nil
-
 	}
+	return returnVal, nil
 }
 
 //
 // Update a system
 //
-func (jc JCAPI) UpdateSystem(system JCSystem) (Id string, err JCError) {
+func (jc JCAPI) UpdateSystem(system JCSystem) (systemId string, err JCError) {
 	data, err := json.Marshal(system)
 	if err != nil {
 		return "", fmt.Errorf("ERROR: Could not marshal JCSystem object, err='%s'", err)
 	}
-
 	url := "/systems/" + system.Id
 
-	jcSysRec, err := jc.Put(url, data)
+	jcSysRec, err := jc.Do(MapJCOpToHTTP(Update), url, data)
 	if err != nil {
 		return "", fmt.Errorf("ERROR: Could not update JCSystem object, err='%s'", err)
 	}
-
+	//TODO it looks like this returns a partial system record?
+	//TODO i need to understand this better
 	var returnSystem JCSystem
 	getJCSystemFieldsFromInterface(jcSysRec.(map[string]interface{}), &returnSystem)
+	//parsedKeys := jcSysRec.(map[string]interface{})
+	//systemId = parsedKeys["_id"].(string)
 
-	if returnUser.hostname != user.hostname {
-		return "", fmt.Errorf("ERROR: JumpCloud did not return the same hostname - this should never happen!")
+	if returnSystem.Id != system.Id {
+		return "", fmt.Errorf("ERROR: JumpCloud did not return the same ID - this should never happen!")
 	}
-
-	userId = returnUser.Id
-
-	return
+	systemId = returnSystem.Id
+	return systemId, nil
 }
 
 func (jc JCAPI) DeleteSystem(system JCSystem) JCError {
