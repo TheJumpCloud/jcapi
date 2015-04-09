@@ -103,6 +103,17 @@ func (jc JCAPI) emailFilter(email string) []byte {
 	return []byte(fmt.Sprintf("{\"filter\": [{\"email\" : \"%s\"}]}", email))
 }
 
+//being lazy; copy pasta
+func (jc JCAPI) hostnameFilter(hostname string) []byte {
+
+	//
+	// Ideally, this would be generalized to take a map[string]string,
+	// that doesn't elicit the correct JSON output for the JumpCloud
+	// filters in json.Marshal()
+	//
+	return []byte(fmt.Sprintf("{\"filter\": [{\"hostname\" : \"%s\"}]}", hostname))
+}
+
 func (jc JCAPI) setHeader(req *http.Request) {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
@@ -173,6 +184,17 @@ func (user *JCUser) AddJCTags(tags []JCTag) {
 		for _, systemUser := range tag.SystemUsers {
 			if systemUser == user.Id {
 				user.Tags = append(user.Tags, tag)
+			}
+		}
+	}
+}
+
+// Add all the tags of which the system is a part to the JCSystem object
+func (system *JCSystem) AddJCTagsToSystem(tags []JCTag) {
+	for _, tag := range tags {
+		for _, sys := range tag.Systems {
+			if sys == system.Id {
+				system.Tags = append(system.Tags, tag)
 			}
 		}
 	}
