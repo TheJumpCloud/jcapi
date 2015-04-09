@@ -16,3 +16,7 @@ This API exposes several JumpCloud REST APIs:
  * Identity Sources - not yet documented
  * Tags - (see https://github.com/TheJumpCloud/JumpCloudAPI#tags)
  * Authentication and Authorization - (see http://support.jumpcloud.com/knowledgebase/articles/455570)
+
+Special Thanks
+==============
+Graham Green (grahamgreen@clearcareonline.com) - for adding support for Systems!
