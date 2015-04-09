@@ -64,20 +64,13 @@ func SystemsToString(systems []JCSystem) string {
 }
 
 func (jcsystem JCSystem) ToString() string {
-	//
-	// WARNING: Never output password via this method, it could be logged in clear text
-	//
-	//	returnVal := fmt.Sprintf("JCUSER: Id=[%s] - UserName=[%s] - FName/LName=[%s/%s] - Email=[%s] - sudo=[%t] - Uid=%s - Gid=%s - enableManagedUid=%t\n",
-	//		jcuser.Id, jcuser.UserName, jcuser.FirstName, jcuser.LastName,
-	//		jcuser.Email, jcuser.Sudo, jcuser.Uid, jcuser.Gid, jcuser.EnableManagedUid)
-	//
-	//	returnVal += fmt.Sprintf("JCUSER: ExternallyManaged=[%t] - ExternalDN=[%s] - ExternalSourceType=[%s]\n",
-	//		jcuser.ExternallyManaged, jcuser.ExternalDN, jcuser.ExternalSourceType)
-	//
-	//	for _, tag := range jcuser.Tags {
-	//		returnVal += fmt.Sprintf("\t%s\n", tag.ToString())
-	//	}
-	returnVal := "I'm a return val"
+	returnVal := fmt.Sprintf("JCSystem: OS=[%s] - TemplateName=[%s] - ID=[%s] - RemoteIP=[%s] - LastContact=[%v] - Version=%s - DisplayName=%s - Hostname=%s - Arch=%s\n",
+		jcsystem.Os, jcsystem.TemplateName, jcsystem.Id, jcsystem.RemoteIP, jcsystem.LastContact,
+		jcsystem.Version, jcsystem.DisplayName, jcsystem.Hostname, jcsystem.Arch)
+
+	for _, tag := range jcsystem.Tags {
+		returnVal += fmt.Sprintf("\t%s\n", tag.ToString())
+	}
 	return returnVal
 }
 
@@ -99,10 +92,18 @@ func getJCSSHDParamFromArray(paramArray []interface{}) []JCSSHDParam {
 }
 
 func getJCNetworkInterfaceFieldsFromInterface(fields map[string]interface{}, nic *JCNetworkInterface) {
-	nic.Address = fields["address"].(string)
-	nic.Family = fields["family"].(string)
-	nic.Internal = fields["internal"].(bool)
-	nic.Name = fields["name"].(string)
+	if _, exists := fields["address"]; exists {
+		nic.Address = fields["address"].(string)
+	}
+	if _, exists := fields["family"]; exists {
+		nic.Family = fields["family"].(string)
+	}
+	if _, exists := fields["internal"]; exists {
+		nic.Internal = fields["internal"].(bool)
+	}
+	if _, exists := fields["name"]; exists {
+		nic.Name = fields["name"].(string)
+	}
 }
 
 func getJCNetworkInterfacesFromArray(nicArray []interface{}) []JCNetworkInterface {
@@ -216,7 +217,7 @@ func getJCSystemsFromInterface(systemInt interface{}) []JCSystem {
 }
 
 // Executes a search by hostname via the JumpCloud API
-func (jc JCAPI) GetSystemByhostname(hostname string, withTags bool) ([]JCSystem, JCError) {
+func (jc JCAPI) GetSystemByHostName(hostname string, withTags bool) ([]JCSystem, JCError) {
 	var returnVal []JCSystem
 
 	jcSystemRec, err := jc.Post("/search/systems", jc.hostnameFilter(hostname))
@@ -310,12 +311,8 @@ func (jc JCAPI) UpdateSystem(system JCSystem) (systemId string, err JCError) {
 	if err != nil {
 		return "", fmt.Errorf("ERROR: Could not update JCSystem object, err='%s'", err)
 	}
-	//TODO it looks like this returns a partial system record?
-	//TODO i need to understand this better
 	var returnSystem JCSystem
 	getJCSystemFieldsFromInterface(jcSysRec.(map[string]interface{}), &returnSystem)
-	//parsedKeys := jcSysRec.(map[string]interface{})
-	//systemId = parsedKeys["_id"].(string)
 
 	if returnSystem.Id != system.Id {
 		return "", fmt.Errorf("ERROR: JumpCloud did not return the same ID - this should never happen!")
@@ -324,6 +321,10 @@ func (jc JCAPI) UpdateSystem(system JCSystem) (systemId string, err JCError) {
 	return systemId, nil
 }
 
+//!!!!!!!!!!!!WARNING!!!!!!!!!!!!
+//This will cause JumpCloud to uninstall the agent on this system
+//You will lose control of the system after the call returns
+//Seriously, It'll be gone
 func (jc JCAPI) DeleteSystem(system JCSystem) JCError {
 	_, err := jc.Delete(fmt.Sprintf("/system/%s", system.Id))
 	if err != nil {

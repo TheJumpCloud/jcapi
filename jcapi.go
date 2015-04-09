@@ -232,16 +232,6 @@ func (jc JCAPI) extractStringArray(input []interface{}) []string {
 	return returnVal
 }
 
-//func (jc JCAPI) extractMapArray(input []interface{}) []map[string]string {
-//	var returnVal []map[string]string
-//
-//	for _, mp := range input {
-//		returnVal = append(returnVal, mp.(interface{}))
-//	}
-//
-//	return returnVal
-//}
-
 func getStringOrNil(input interface{}) string {
 	returnVal := ""
 

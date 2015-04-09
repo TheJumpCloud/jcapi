@@ -45,9 +45,9 @@ func TestSystems(t *testing.T) {
 	if testSystem.Id != sysByID.Id {
 		t.Fatalf("Got ID='%s', expected '%s'", sysByID.Id, testSystem.Id)
 	}
-
+	t.Logf("TestSystem: '%s'", testSystem.ToString())
 	var foundSystem int = -1
-	sysByHostname, err := jcapi.GetSystemByhostname(testSystem.Hostname, true)
+	sysByHostname, err := jcapi.GetSystemByHostName(testSystem.Hostname, true)
 	for i, sys := range sysByHostname {
 		if sys.Id == testSystem.Id {
 			foundSystem = i
@@ -56,13 +56,12 @@ func TestSystems(t *testing.T) {
 	if foundSystem == -1 {
 		t.Fatalf("Didn't find test system '%s', foundSystem=%d", testSystem.Id, foundSystem)
 	}
+	t.Logf("TestSystem: '%s'", testSystem.ToString())
 	tagsBefore := testSystem.Tags
 	if len(tagsBefore) == 0 {
 		t.Fatalf("no tags in test system :-(")
 	}
 	allTags, err := jcapi.GetAllTags()
-	//fmt.Println("alltags --->")
-	//fmt.Println(allTags)
 	if err != nil {
 		t.Fatalf("couldn't get the tags")
 	}
@@ -71,7 +70,6 @@ func TestSystems(t *testing.T) {
 		tagList[i] = tag.Name
 	}
 	testSystem.TagList = tagList
-	//fmt.Println(testSystem)
 	updatedSystemId, err := jcapi.UpdateSystem(testSystem)
 	if err != nil {
 		t.Fatalf("Couldn't update system, err='%s'", err)
@@ -81,9 +79,7 @@ func TestSystems(t *testing.T) {
 		t.Fatalf("error getting system")
 	}
 	tagsAfter := updatedSystem.Tags
-	//fmt.Println(tagsAfter)
 	if len(tagsAfter) < len(allTags) {
-		//fmt.Println(tagsAfter)
 		t.Fatalf("not enough tags!")
 	}
 	beforeTagList := make([]string, len(tagsBefore))
@@ -226,7 +222,6 @@ func MakeTestTag() (tag JCTag) {
 }
 
 func TestTags(t *testing.T) {
-	//fmt.Println("in TestTags")
 	jcapi := NewJCAPI(testAPIKey, testUrlBase)
 
 	newTag := MakeTestTag()
