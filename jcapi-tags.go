@@ -127,7 +127,7 @@ func (jc JCAPI) GetTagByName(tagName string) (tag JCTag, err JCError) {
 
 	retVal, err := jc.Get(url)
 	if err != nil {
-		err = fmt.Errorf("ERROR: Could not get tag by name/id '$s', err='%s'", tagName, err)
+		err = fmt.Errorf("ERROR: Could not get tag by name/id '%s', err='%s'", tagName, err)
 	}
 
 	if retVal != nil {
