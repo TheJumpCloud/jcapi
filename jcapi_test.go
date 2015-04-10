@@ -252,7 +252,7 @@ func TestTags(t *testing.T) {
 
 	oneTag, err := jcapi.GetTagByName(allTags[foundTag].Name)
 	if err != nil {
-		t.Fatalf("Could not get tag by name, '%s%, err='%s'", allTags[foundTag].Name, err)
+		t.Fatalf("Could not get tag by name, '%s', err='%s'", allTags[foundTag].Name, err)
 	}
 	if oneTag.Name != allTags[foundTag].Name {
 		t.Fatalf("Tag names don't match, '%s' != '%s'", oneTag.Name, allTags[foundTag].Name)
