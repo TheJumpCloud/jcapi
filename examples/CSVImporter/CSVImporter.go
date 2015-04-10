@@ -104,14 +104,6 @@ func main() {
     reader := csv.NewReader(inFile)
     reader.FieldsPerRecord = -1    // indicates records have optional fields
 
-    // Fetch all systems in JumpCloud for lookups below
-    systemList, err := jc.GetSystems(true)
-
-    if err != nil {
-        fmt.Printf("Could not read systems, err='%s'\n", err)
-        return
-    }
-
     // Process each user/request record found in the CSV file...
     recordCount := 0
 
@@ -210,11 +202,12 @@ func main() {
             // Determine if the host specified is defined in JumpCloud
             var currentJCSystem jcapi.JCSystem
 
-            for _, testSys := range systemList {
-                if testSys.Hostname == currentHost {
-                    currentJCSystem = testSys
-                    break
-                }
+            tempSysList, err := jc.GetSystemByHostName(currentHost, true)
+
+            if len(tempSysList) > 0 {
+                currentJCSystem = tempSysList[0]
+            } else {
+                currentJCSystem.Id = ""
             }
 
             if currentJCSystem.Id != "" {

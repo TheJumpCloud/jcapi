@@ -232,8 +232,13 @@ func (jc JCAPI) GetSystemByHostName(hostname string, withTags bool) ([]JCSystem,
 	var returnVal []JCSystem
 
 	jcSystemRec, err := jc.Post("/search/systems", jc.hostnameFilter(hostname))
+
 	if err != nil {
 		return nil, fmt.Errorf("ERROR: Post to JumpCloud failed, err='%s'", err)
+	}
+
+	if jcSystemRec == nil {
+		return nil, fmt.Errorf("ERROR: No systems found")
 	}
 
 	returnVal = getJCSystemsFromInterface(jcSystemRec)
