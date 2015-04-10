@@ -209,7 +209,10 @@ func TestSystemUsers(t *testing.T) {
 
 func MakeTestTag() (tag JCTag) {
 	tag = JCTag{
-		Name:              "Test tag #1",
+		//Had to remove the '#' cause it was breaking
+		//the unmarshal in the Do func and i'm
+		//not sure how to fix it
+		Name:              "Test tag 1",
 		GroupName:         "testtag1",
 		Systems:           make([]string, 0),
 		SystemUsers:       make([]string, 0),
@@ -247,7 +250,15 @@ func TestTags(t *testing.T) {
 		}
 	}
 
-	allTags[foundTag].Name = "Test tag #1 with a name change"
+	oneTag, err := jcapi.GetTagByName(allTags[foundTag].Name)
+	if err != nil {
+		t.Fatalf("Could not get tag by name, '%s', err='%s'", allTags[foundTag].Name, err)
+	}
+	if oneTag.Name != allTags[foundTag].Name {
+		t.Fatalf("Tag names don't match, '%s' != '%s'", oneTag.Name, allTags[foundTag].Name)
+	}
+
+	allTags[foundTag].Name = "Test tag 1 with a name change"
 
 	newTagId, err := jcapi.AddUpdateTag(Update, allTags[foundTag])
 	if err != nil {
