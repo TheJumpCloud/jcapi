@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"time"
+	"strings"
 )
 
 const (
@@ -103,7 +104,7 @@ func (jc JCAPI) emailFilter(email string) []byte {
 	return []byte(fmt.Sprintf("{\"filter\": [{\"email\" : \"%s\"}]}", email))
 }
 
-//being lazy; copy pasta
+//being lazy; copy paste
 func (jc JCAPI) hostnameFilter(hostname string) []byte {
 
 	//
@@ -249,6 +250,25 @@ func getUint16OrNil(input interface{}) uint16 {
 	switch input.(type) {
 	case uint16:
 		returnVal = input.(uint16)
+	}
+
+	return returnVal
+}
+
+func GetTrueOrFalse(input interface{}) bool {
+	returnVal := false
+
+	switch input.(type) {
+	case string:
+		temp := strings.ToLower(input.(string))
+		returnVal = strings.Contains("true", temp) || strings.Contains("yes", temp) || strings.Contains("1", temp)
+		break
+	case int:
+		returnVal = input.(int) != 0
+		break
+	case bool:
+		returnVal = input.(bool)
+		break
 	}
 
 	return returnVal

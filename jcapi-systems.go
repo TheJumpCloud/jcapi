@@ -71,7 +71,20 @@ func (jcsystem JCSystem) ToString() string {
 	for _, tag := range jcsystem.Tags {
 		returnVal += fmt.Sprintf("\t%s\n", tag.ToString())
 	}
+
 	return returnVal
+}
+
+func (jcsystem JCSystem) SystemHasTag(tagName string) (hasTag bool, tagId string) {
+	for _, tag := range jcsystem.Tags {
+		if tag.Name == tagName {
+			hasTag = true
+			tagId = tag.Id
+			return
+		}
+	}
+
+	return
 }
 
 func getJCSSHDParamFieldsFromInterface(fields map[string]interface{}, params *JCSSHDParam) {
@@ -221,8 +234,13 @@ func (jc JCAPI) GetSystemByHostName(hostname string, withTags bool) ([]JCSystem,
 	var returnVal []JCSystem
 
 	jcSystemRec, err := jc.Post("/search/systems", jc.hostnameFilter(hostname))
+
 	if err != nil {
 		return nil, fmt.Errorf("ERROR: Post to JumpCloud failed, err='%s'", err)
+	}
+
+	if jcSystemRec == nil {
+		return nil, fmt.Errorf("ERROR: No systems found")
 	}
 
 	returnVal = getJCSystemsFromInterface(jcSystemRec)
@@ -276,8 +294,13 @@ func (jc JCAPI) GetSystems(withTags bool) ([]JCSystem, JCError) {
 		url := fmt.Sprintf("/systems?sort=hostname&skip=%d&limit=%d", skip, searchLimit)
 
 		jcSysRec, err2 := jc.Get(url)
+
 		if err2 != nil {
 			return nil, fmt.Errorf("ERROR: Get to JumpCloud failed, err='%s'", err2)
+		}
+
+		if jcSysRec == nil {
+			return nil, fmt.Errorf("ERROR: No systems found")
 		}
 
 		returnVal = getJCSystemsFromInterface(jcSysRec)
