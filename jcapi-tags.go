@@ -122,6 +122,21 @@ func (jc JCAPI) GetAllTags() (tagList []JCTag, err JCError) {
 	return
 }
 
+func (jc JCAPI) GetTagByName(tagName string) (tag JCTag, err JCError) {
+	url := fmt.Sprintf("/tags/%s", tagName)
+
+	retVal, err := jc.Get(url)
+	if err != nil {
+		err = fmt.Errorf("ERROR: Could not get tag by name/id '$s', err='%s'", tagName, err)
+	}
+
+	if retVal != nil {
+		jc.getTagFieldsFromInterface(retVal.(map[string]interface{}), &tag)
+	}
+
+	return
+}
+
 //
 // Add or Update a tag in place on JumpCloud
 //
