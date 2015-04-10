@@ -1,14 +1,16 @@
 package jcapi
 
 import (
+	"os"
 	"testing"
 )
 
 const (
-	testAPIKey  string = "<your-API-key-here>"
 	testUrlBase string = "https://console.jumpcloud.com/api"
 	authUrlBase string = "https://auth.jumpcloud.com"
 )
+
+var testAPIKey string = os.Getenv("JUMPCLOUD_APIKEY")
 
 func MakeTestUser() (user JCUser) {
 	user = JCUser{
@@ -27,6 +29,78 @@ func MakeTestUser() (user JCUser) {
 	}
 
 	return
+}
+func TestSystems(t *testing.T) {
+	jcapi := NewJCAPI(testAPIKey, testUrlBase)
+	systems, err := jcapi.GetSystems(true)
+	if err != nil {
+		t.Fatalf("couldn't get system")
+	}
+	if len(systems) == 0 {
+		t.Fatalf("no systems found")
+	}
+	//fmt.Printf("'%d' Systems found\n", len(systems))
+	testSystem := systems[0]
+	sysByID, err := jcapi.GetSystemById(testSystem.Id, true)
+	if testSystem.Id != sysByID.Id {
+		t.Fatalf("Got ID='%s', expected '%s'", sysByID.Id, testSystem.Id)
+	}
+	t.Logf("TestSystem: '%s'", testSystem.ToString())
+	var foundSystem int = -1
+	sysByHostname, err := jcapi.GetSystemByHostName(testSystem.Hostname, true)
+	for i, sys := range sysByHostname {
+		if sys.Id == testSystem.Id {
+			foundSystem = i
+		}
+	}
+	if foundSystem == -1 {
+		t.Fatalf("Didn't find test system '%s', foundSystem=%d", testSystem.Id, foundSystem)
+	}
+	t.Logf("TestSystem: '%s'", testSystem.ToString())
+	tagsBefore := testSystem.Tags
+	if len(tagsBefore) == 0 {
+		t.Fatalf("no tags in test system :-(")
+	}
+	allTags, err := jcapi.GetAllTags()
+	if err != nil {
+		t.Fatalf("couldn't get the tags")
+	}
+	tagList := make([]string, len(allTags))
+	for i, tag := range allTags {
+		tagList[i] = tag.Name
+	}
+	testSystem.TagList = tagList
+	updatedSystemId, err := jcapi.UpdateSystem(testSystem)
+	if err != nil {
+		t.Fatalf("Couldn't update system, err='%s'", err)
+	}
+	updatedSystem, err := jcapi.GetSystemById(updatedSystemId, true)
+	if err != nil {
+		t.Fatalf("error getting system")
+	}
+	tagsAfter := updatedSystem.Tags
+	if len(tagsAfter) < len(allTags) {
+		t.Fatalf("not enough tags!")
+	}
+	beforeTagList := make([]string, len(tagsBefore))
+	for i, tag := range tagsBefore {
+		beforeTagList[i] = tag.Name
+	}
+
+	updatedSystem.TagList = beforeTagList
+	backToNormalId, err := jcapi.UpdateSystem(updatedSystem)
+	if err != nil {
+		t.Fatalf("Couldn't update system, err='%s'", err)
+	}
+	backToNormal, err := jcapi.GetSystemById(backToNormalId, true)
+	if err != nil {
+		t.Fatalf("error getting system")
+	}
+	//TODO complare Tags contents
+	if len(backToNormal.Tags) != len(tagsBefore) {
+		t.Fatalf("tags don't match")
+	}
+
 }
 
 func TestSystemUsersByOne(t *testing.T) {
