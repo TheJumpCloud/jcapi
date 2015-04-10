@@ -211,7 +211,7 @@ func main() {
             var currentJCSystem jcapi.JCSystem
 
             for _, testSys := range systemList {
-                if testSys.HostName == currentHost {
+                if testSys.Hostname == currentHost {
                     currentJCSystem = testSys
                     break
                 }
