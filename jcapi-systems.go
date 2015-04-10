@@ -76,12 +76,11 @@ func (jcsystem JCSystem) ToString() string {
 }
 
 func (jcsystem JCSystem) SystemHasTag(tagName string) (hasTag bool, tagId string) {
-	hasTag = false
-	tagId = ""
-
 	for _, tag := range jcsystem.Tags {
 		if tag.Name == tagName {
-			return true, tag.Id
+			hasTag = true
+			tagId = tag.Id
+			return
 		}
 	}
 
