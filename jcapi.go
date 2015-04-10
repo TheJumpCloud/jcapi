@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"time"
+	"strings"
 )
 
 const (
@@ -178,6 +179,17 @@ func (user *JCUser) AddJCTags(tags []JCTag) {
 	}
 }
 
+// Add all the tags of which the system is a part to the JCSystem object
+func (system *JCSystem) AddSystemJCTags(tags []JCTag) {
+	for _, tag := range tags {
+		for _, checksys := range tag.Systems {
+			if checksys == system.Id {
+				system.Tags = append(system.Tags, tag)
+			}
+		}
+	}
+}
+
 func MapJCOpToHTTP(op JCOp) string {
 	var returnVal string
 
@@ -227,6 +239,25 @@ func getUint16OrNil(input interface{}) uint16 {
 	switch input.(type) {
 	case uint16:
 		returnVal = input.(uint16)
+	}
+
+	return returnVal
+}
+
+func GetTrueOrFalse(input interface{}) bool {
+	returnVal := false
+
+	switch input.(type) {
+	case string:
+		temp := strings.ToLower(input.(string))
+		returnVal = strings.Contains("true", temp) || strings.Contains("yes", temp) || strings.Contains("1", temp)
+		break
+	case int:
+		returnVal = input.(int) != 0
+		break
+	case bool:
+		returnVal = input.(bool)
+		break
 	}
 
 	return returnVal

@@ -183,6 +183,10 @@ func (jc JCAPI) GetSystemUsers(withTags bool) (userList []JCUser, err JCError) {
 			return nil, fmt.Errorf("ERROR: Post to JumpCloud failed, err='%s'", err2)
 		}
 
+		if jcUserRec == nil {
+			return nil, fmt.Errorf("ERROR: No users found")
+		}
+
 		// We really only care about the ID for the following call...
 		returnVal = getJCUsersFromInterface(jcUserRec)
 
