@@ -101,7 +101,7 @@ func TestCSVImporter(t *testing.T) {
 	}
 
 	foundIt := false
-	testTagName := system.Hostname + " - Joe Smith"
+	testTagName := system.Hostname + " - Joe Smith (js)"
 
 	for _, checkTag := range tempUser.Tags {
 		if checkTag.Name == testTagName {

@@ -166,12 +166,19 @@ func ProcessCSVRecord(jc jcapi.JCAPI, userList []jcapi.JCUser, csvRecord []strin
 		}
 
 		if currentJCSystem.Id != "" {
-			// Determine operation to perform based on whether the tag
-			// is already in JumpCloud...
+			// Construct the user's tag from the inputs
 			var tempTag jcapi.JCTag
 
-			tempTag.Name = currentHost + " - " + currentUser.FirstName + " " + currentUser.LastName
+			tempTag.Name = currentHost + " - "
 
+			if currentUser.FirstName != "" && currentUser.LastName != "" {
+				tempTag.Name = tempTag.Name + currentUser.FirstName + " " + currentUser.LastName + " "
+			}
+
+			tempTag.Name = tempTag.Name + "(" + currentUser.UserName + ")"
+
+			// Determine operation to perform based on whether the tag
+			// is already in JumpCloud...
 			hasTag, tagId := currentJCSystem.SystemHasTag(tempTag.Name)
 
 			if hasTag {
