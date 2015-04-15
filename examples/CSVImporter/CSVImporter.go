@@ -16,10 +16,11 @@ import (
 //
 // The CSV file must have each line formatted as:
 // 
-// first_name, last_name, USER_NAME, EMAIL, uid, gid, SUDO_FLAG, password, host_name, tag_name, admin1, admin2, ...
+// first_name, last_name, USER_NAME, EMAIL, uid, gid, SUDO_FLAG, password, host_name, admin1, admin2, ...
 //
 // Values shown in all lowercase are optional, while those in all uppercase
-// are required.
+// are required.  Placeholders (i.e. commas with no value) must be specified
+// for all values up to "host_name", but the administrator list may be omitted.
 //
 // For each line of the CSV file, this program will:
 //
@@ -35,9 +36,8 @@ import (
 // 3 - The value of the SUDO_FLAG will always be applied to this user.  All
 //     other optional values specified will be applied as appropriate.
 //
-// 4 - When both the host_name and tag_name are specified, a tag will be
-//     created or updated for this USER_NAME associated with the host_name
-//     provided.
+// 4 - When the host_name is specified, a tag will be created or updated for
+//     this USER_NAME associated with the host_name provided.
 //     (n.b. - if the USER_NAME already exists on the host_name in question,
 //     specifying these values here will result in the account on host_name
 //     being "taken over" by JumpCloud)
@@ -78,6 +78,134 @@ func GetUserIdFromUserName(users []jcapi.JCUser, name string) string {
 
 
 //
+// Process the line read from the CSV file into JumpCloud. (helper function)
+//
+
+func ProcessCSVRecord(jc jcapi.JCAPI, userList []jcapi.JCUser, csvRecord []string) {
+	// Setup work variables
+	var currentUser jcapi.JCUser
+	var currentHost string
+
+	currentAdmins :=  make(map[string]string)  // "user name", "user id"
+
+	var fieldMap = map[int]*string {
+		0 : &currentUser.FirstName,
+		1 : &currentUser.LastName,
+		2 : &currentUser.UserName,
+		3 : &currentUser.Email,
+		4 : &currentUser.Uid,
+		5 : &currentUser.Gid,
+		// "Sudo" boolean will be handled separately, so no 6
+		7 : &currentUser.Password,
+		8 : &currentHost,
+	}
+
+	// Parse the record provided into our work vars
+	for i, element := range csvRecord {
+		// Handle variable fields separately
+		if i > 8 {
+			break
+		}
+
+		// Special case for sole boolean to be parsed
+		if i == 6 {
+			currentUser.Sudo = jcapi.GetTrueOrFalse(element)
+		} else {
+			// Default case is to move the string into the var
+			*fieldMap[i] = element
+		}
+	}
+
+	// The administrators list is optional, and variable.  Using a slice
+	// will pick it up if it exists without causing errors otherwise.
+	// Map any names found to their ID values for later use.
+	adminsSlice := csvRecord[9:]
+
+	for _, tempAdmin := range adminsSlice {
+		currentAdmins[tempAdmin] = GetUserIdFromUserName(userList, tempAdmin)
+	}
+
+	// Determine operation to perform based on whether the current user
+	// is already in JumpCloud...
+	var opCode jcapi.JCOp
+	currentUserId := GetUserIdFromUserName(userList, currentUser.UserName)
+
+	if currentUserId != "" {
+		opCode = jcapi.Update
+		currentUser.Id = currentUserId
+	} else {
+		opCode = jcapi.Insert
+	}
+
+	// Perform the requested operation on the current user and report results
+	currentUserId, err := jc.AddUpdateUser(opCode, currentUser)
+
+	if err != nil {
+		fmt.Printf("Could not process user '%s', err='%s'", currentUser.ToString(), err)
+		return
+	} else {
+		fmt.Printf("Processed user ID '%s'\n", currentUserId)
+	}
+
+	// Create/associate JumpCloud tags for the host and user...
+	if currentHost != "" {
+		// Determine if the host specified is defined in JumpCloud
+		var currentJCSystem jcapi.JCSystem
+
+		tempSysList, err := jc.GetSystemByHostName(currentHost, true)
+
+		if len(tempSysList) > 1 {
+			fmt.Printf("Found multiple hostnames for '%s' and therefore cannot process tags.\n", currentHost)
+			return
+		}
+
+		if len(tempSysList) == 1 {
+			currentJCSystem = tempSysList[0]
+		} else {
+			currentJCSystem.Id = ""
+		}
+
+		if currentJCSystem.Id != "" {
+			// Determine operation to perform based on whether the tag
+			// is already in JumpCloud...
+			var tempTag jcapi.JCTag
+
+			tempTag.Name = currentHost + " - " + currentUser.FirstName + " " + currentUser.LastName
+
+			hasTag, tagId := currentJCSystem.SystemHasTag(tempTag.Name)
+
+			if hasTag {
+				opCode = jcapi.Update
+				tempTag.Id = tagId
+			} else {
+				opCode = jcapi.Insert
+			}
+
+			// Build a suitable tag from the request's elements
+			tempTag.ApplyToJumpCloud = true
+			tempTag.Systems = append(tempTag.Systems, currentJCSystem.Id)
+			tempTag.SystemUsers = append(tempTag.SystemUsers, currentUserId)
+
+			for _, adminId := range currentAdmins {
+				tempTag.SystemUsers = append(tempTag.SystemUsers, adminId)
+			}
+
+			// Create or modify the tag in JumpCloud
+			tempTag.Id, err = jc.AddUpdateTag(opCode, tempTag)
+
+			if err != nil {
+				fmt.Printf("Could not process tag '%s', err='%s'", tempTag.ToString(), err)
+			} else {
+				fmt.Printf("Processed tag ID '%s'\n", tempTag.Id)
+			}
+		}
+	}
+
+	return
+}
+
+
+//
 // Main Entry Point...
 //
 
@@ -106,7 +234,7 @@ func main() {
 	inFile, err := os.Open(csvFile)
 
 	if err != nil {
-		fmt.Println(err)
+		fmt.Printf("Error opening CSV file %s, err=%s\n", csvFile, err)
 		return
 	}
 
@@ -119,140 +247,23 @@ func main() {
 	recordCount := 0
 
 	for {
-		// Setup work variables
-		var currentUser jcapi.JCUser
-		var currentHost string
-		var currentTag  string
-
-		currentAdmins :=  make(map[string]string)  // "user name", "user id"
-
-		var fieldMap = map[int]*string {
-			0 : &currentUser.FirstName,
-			1 : &currentUser.LastName,
-			2 : &currentUser.UserName,
-			3 : &currentUser.Email,
-			4 : &currentUser.Uid,
-			5 : &currentUser.Gid,
-			// "Sudo" boolean will be handled separately, so no 6
-			7 : &currentUser.Password,
-			8 : &currentHost,
-			9 : &currentTag,
-		}
-
 		// Read next record from CSV file
 		record, err := reader.Read()
 
 		// Exit loop at the end of file or on error
 		if err == io.EOF {
-			fmt.Println("EOF")
+			fmt.Println("<EOF>")
 			break
 		} else if err != nil {
-			fmt.Println("Error reading CSV file %s, line %d, err=%s\n", csvFile, recordCount, err)
+			fmt.Printf("Error reading CSV file %s, line %d, err=%s\n", csvFile, recordCount, err)
 			return
 		}
 
+		// Process this request record
+		ProcessCSVRecord(jc, userList, record)
+
+		// Indicate that we processed another line of the CSV file
 		recordCount = recordCount + 1
-
-		// Parse the record just read into our work vars
-		for i, element := range record {
-			// Handle variable fields separately
-			if i > 9 {
-				break
-			}
-
-			// Special case for sole boolean to be parsed
-			if i == 6 {
-				currentUser.Sudo = jcapi.GetTrueOrFalse(element)
-			} else {
-				// Default case is to move the string into the var
-				*fieldMap[i] = element
-			}
-		}
-
-		// The administrators list is optional, and variable.  Using a slice
-		// will pick it up if it exists without causing errors otherwise.
-		// Map any names found to their ID values for later use.
-		adminsSlice := record[10:]
-
-		for _, tempAdmin := range adminsSlice {
-			currentAdmins[tempAdmin] = GetUserIdFromUserName(userList, tempAdmin)
-		}
-
-		// Determine operation to perform based on whether the current user
-		// is already in JumpCloud...
-		var opCode jcapi.JCOp
-		currentUserId := GetUserIdFromUserName(userList, currentUser.UserName)
-
-		if currentUserId != "" {
-			opCode = jcapi.Update
-			currentUser.Id = currentUserId
-		} else {
-			opCode = jcapi.Insert
-		}
-
-		// Perform the requested operation on the current user and report results
-		currentUserId, err = jc.AddUpdateUser(opCode, currentUser)
-
-		if err != nil {
-			fmt.Printf("Could not process user '%s', err='%s'", currentUser.ToString(), err)
-			continue
-		} else {
-			fmt.Printf("Processed user ID '%s'\n", currentUserId)
-		}
-
-		// Create/associate JumpCloud tags for the host and user...
-		if currentHost != "" {
-			// Determine if the host specified is defined in JumpCloud
-			var currentJCSystem jcapi.JCSystem
-
-			tempSysList, err := jc.GetSystemByHostName(currentHost, true)
-
-			if len(tempSysList) > 1 {
-				fmt.Printf("Found multiple hostnames for '%s' and therefore cannot process tags.\n", currentHost)
-				continue
-			}
-
-			if len(tempSysList) == 1 {
-				currentJCSystem = tempSysList[0]
-			} else {
-				currentJCSystem.Id = ""
-			}
-
-			if currentJCSystem.Id != "" {
-				// Determine operation to perform based on whether the tag
-				// is already in JumpCloud...
-				var tempTag jcapi.JCTag
-
-				tempTag.Name = currentHost + " - " + currentUser.FirstName + " " + currentUser.LastName
-
-				hasTag, tagId := currentJCSystem.SystemHasTag(tempTag.Name)
-
-				if hasTag {
-					opCode = jcapi.Update
-					tempTag.Id = tagId
-				} else {
-					opCode = jcapi.Insert
-				}
-
-				// Build a suitable tag from the request's elements
-				tempTag.ApplyToJumpCloud = true
-				tempTag.Systems = append(tempTag.Systems, currentJCSystem.Id)
-				tempTag.SystemUsers = append(tempTag.SystemUsers, currentUserId)
-
-				for _, adminId := range currentAdmins {
-					tempTag.SystemUsers = append(tempTag.SystemUsers, adminId)
-				}
-
-				// Create or modify the tag in JumpCloud
-				tempTag.Id, err = jc.AddUpdateTag(opCode, tempTag)
-
-				if err != nil {
-					fmt.Printf("Could not process tag '%s', err='%s'", tempTag.ToString(), err)
-				} else {
-					fmt.Printf("Processed tag ID '%s'\n", tempTag.Id)
-				}
-			}
-		}
 	}
 
 	// Print run summary
