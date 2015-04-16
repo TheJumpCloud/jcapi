@@ -1,21 +1,21 @@
 package main
 
 import (
-	"fmt"
-	"flag"
 	"encoding/csv"
-	"os"
-	"io"
+	"flag"
+	"fmt"
 	"github.com/TheJumpCloud/jcapi"
+	"io"
+	"os"
+	"strings"
 )
-
 
 //
 // This program will process each line (record) of a CSV file as a user
 // import request into JumpCloud.
 //
 // The CSV file must have each line formatted as:
-// 
+//
 // first_name, last_name, USER_NAME, EMAIL, uid, gid, SUDO_FLAG, password, host_name, admin1, admin2, ...
 //
 // Values shown in all lowercase are optional, while those in all uppercase
@@ -52,11 +52,9 @@ import (
 // times without creating duplication or similar issues.
 //
 
-
 const (
-    urlBase string = "https://console.jumpcloud.com/api"
+	urlBase string = "https://console.jumpcloud.com/api"
 )
-
 
 //
 // Returns the ID for the username specified if it is contained in the
@@ -76,28 +74,27 @@ func GetUserIdFromUserName(users []jcapi.JCUser, name string) string {
 	return returnVal
 }
 
-
 //
 // Process the line read from the CSV file into JumpCloud. (helper function)
 //
 
-func ProcessCSVRecord(jc jcapi.JCAPI, userList []jcapi.JCUser, csvRecord []string) {
+func ProcessCSVRecord(jc jcapi.JCAPI, userList []jcapi.JCUser, csvRecord []string) (err error) {
 	// Setup work variables
 	var currentUser jcapi.JCUser
 	var currentHost string
 
-	currentAdmins :=  make(map[string]string)  // "user name", "user id"
+	currentAdmins := make(map[string]string) // "user name", "user id"
 
-	var fieldMap = map[int]*string {
-		0 : &currentUser.FirstName,
-		1 : &currentUser.LastName,
-		2 : &currentUser.UserName,
-		3 : &currentUser.Email,
-		4 : &currentUser.Uid,
-		5 : &currentUser.Gid,
+	var fieldMap = map[int]*string{
+		0: &currentUser.FirstName,
+		1: &currentUser.LastName,
+		2: &currentUser.UserName,
+		3: &currentUser.Email,
+		4: &currentUser.Uid,
+		5: &currentUser.Gid,
 		// "Sudo" boolean will be handled separately, so no 6
-		7 : &currentUser.Password,
-		8 : &currentHost,
+		7: &currentUser.Password,
+		8: &currentHost,
 	}
 
 	// Parse the record provided into our work vars
@@ -137,25 +134,38 @@ func ProcessCSVRecord(jc jcapi.JCAPI, userList []jcapi.JCUser, csvRecord []strin
 		opCode = jcapi.Insert
 	}
 
+	if currentUser.Uid != "" || currentUser.Gid != "" {
+		currentUser.EnableManagedUid = true
+	}
+
 	// Perform the requested operation on the current user and report results
-	currentUserId, err := jc.AddUpdateUser(opCode, currentUser)
+	currentUserId, err = jc.AddUpdateUser(opCode, currentUser)
 
 	if err != nil {
-		fmt.Printf("Could not process user '%s', err='%s'", currentUser.ToString(), err)
+		err = fmt.Errorf("Could not %s user '%s', err='%s'", jcapi.MapJCOpToHTTP(opCode), currentUser.ToString(), err)
 		return
 	} else {
-		fmt.Printf("Processed user ID '%s'\n", currentUserId)
+		if opCode == jcapi.Update {
+			fmt.Printf("\tUser '%s' (ID '%s') updated from input file\n", currentUser.UserName, currentUserId)
+		} else {
+			fmt.Printf("\tLoaded user '%s' (ID '%s')\n", currentUser.UserName, currentUserId)
+		}
 	}
 
 	// Create/associate JumpCloud tags for the host and user...
 	if currentHost != "" {
 		// Determine if the host specified is defined in JumpCloud
 		var currentJCSystem jcapi.JCSystem
+		var tempSysList []jcapi.JCSystem
 
-		tempSysList, err := jc.GetSystemByHostName(currentHost, true)
+		tempSysList, err = jc.GetSystemByHostName(currentHost, true)
+		if err != nil {
+			err = fmt.Errorf("Look up for host '%s' failed - err='%s'", currentHost, err)
+			return
+		}
 
 		if len(tempSysList) > 1 {
-			fmt.Printf("Found multiple hostnames for '%s' and therefore cannot process tags.\n", currentHost)
+			err = fmt.Errorf("Found multiple hostnames for '%s', so cannot build a tag for it.\n", currentHost)
 			return
 		}
 
@@ -177,16 +187,22 @@ func ProcessCSVRecord(jc jcapi.JCAPI, userList []jcapi.JCUser, csvRecord []strin
 
 			tempTag.Name = tempTag.Name + "(" + currentUser.UserName + ")"
 
-			// Determine operation to perform based on whether the tag
-			// is already in JumpCloud...
-			hasTag, tagId := currentJCSystem.SystemHasTag(tempTag.Name)
+			// Does the tag already exist?
+			var tag jcapi.JCTag
 
-			if hasTag {
-				opCode = jcapi.Update
-				tempTag.Id = tagId
-			} else {
-				opCode = jcapi.Insert
+			tag, err = jc.GetTagByName(tempTag.Name)
+			if err != nil && !strings.Contains(err.Error(), "unexpected end of JSON input") {
+				err = fmt.Errorf("Tag lookup failed for tag '%s', skipping this tag, err='%s'", tempTag.Name, err)
+				return
 			}
+
+			if tag.Id != "" {
+				// Yep, tag exists
+				fmt.Printf("\tTag '%s' already exists, not modifying it.\n", tempTag.Name)
+				return
+			}
+
+			opCode = jcapi.Insert
 
 			// Build a suitable tag from the request's elements
 			tempTag.ApplyToJumpCloud = true
@@ -199,18 +215,16 @@ func ProcessCSVRecord(jc jcapi.JCAPI, userList []jcapi.JCUser, csvRecord []strin
 
 			// Create or modify the tag in JumpCloud
 			tempTag.Id, err = jc.AddUpdateTag(opCode, tempTag)
-
 			if err != nil {
-				fmt.Printf("Could not process tag '%s', err='%s'", tempTag.ToString(), err)
+				err = fmt.Errorf("Could not POST tag '%s', err='%s'", tempTag.ToString(), err)
 			} else {
-				fmt.Printf("Processed tag ID '%s'\n", tempTag.Id)
+				fmt.Printf("\tCreated tag '%s' (ID '%s')\n", tempTag.Name, tempTag.Id)
 			}
 		}
 	}
 
 	return
 }
-
 
 //
 // Main Entry Point...
@@ -248,10 +262,10 @@ func main() {
 	defer inFile.Close()
 
 	reader := csv.NewReader(inFile)
-	reader.FieldsPerRecord = -1    // indicates records have optional fields
+	reader.FieldsPerRecord = -1 // indicates records have optional fields
 
 	// Process each user/request record found in the CSV file...
-	recordCount := 0
+	recordCount := 1
 
 	for {
 		// Read next record from CSV file
@@ -262,12 +276,17 @@ func main() {
 			fmt.Println("<EOF>")
 			break
 		} else if err != nil {
-			fmt.Printf("Error reading CSV file %s, line %d, err=%s\n", csvFile, recordCount, err)
+			fmt.Printf("ERROR: Could not read CSV file %s, line %d, err=%s\n", csvFile, recordCount, err)
 			return
 		}
 
+		fmt.Printf("Line #%d:\n", recordCount)
+
 		// Process this request record
-		ProcessCSVRecord(jc, userList, record)
+		err = ProcessCSVRecord(jc, userList, record)
+		if err != nil {
+			fmt.Printf("\tERROR: %s\n", err)
+		}
 
 		// Indicate that we processed another line of the CSV file
 		recordCount = recordCount + 1
