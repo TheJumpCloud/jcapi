@@ -1,9 +1,9 @@
 package main
 
 import (
+	"github.com/TheJumpCloud/jcapi"
 	"os"
 	"testing"
-	"github.com/TheJumpCloud/jcapi"
 )
 
 const (
@@ -14,8 +14,15 @@ const (
 var testAPIKey string = os.Getenv("JUMPCLOUD_APIKEY")
 var testSystemID string = os.Getenv("JUMPCLOUD_SYSTEMID")
 
+func checkEnv(t *testing.T) {
+	if testAPIKey == "" || testSystemID == "" {
+		t.Fatalf("Environment not set, you need to:\n\texport JUMPCLOUD_APIKEY=<your-API-key>\n\texport JUMPCLOUD_SYSTEMID=<some-system-ID-on-your-acct>\n")
+	}
+}
 
 func TestCSVImporter(t *testing.T) {
+	checkEnv(t)
+
 	// Attach to JumpCloud
 	jc := jcapi.NewJCAPI(testAPIKey, testUrlBase)
 
