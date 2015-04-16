@@ -175,51 +175,54 @@ func ProcessCSVRecord(jc jcapi.JCAPI, userList []jcapi.JCUser, csvRecord []strin
 			currentJCSystem.Id = ""
 		}
 
-		if currentJCSystem.Id != "" {
-			// Construct the user's tag from the inputs
-			var tempTag jcapi.JCTag
+		if currentHost == "" {
+			// No more work to do on this line... we don't add tags without systems.
+			return
+		}
 
-			tempTag.Name = currentHost + " - "
+		// Construct the user's tag from the inputs
+		var tempTag jcapi.JCTag
 
-			if currentUser.FirstName != "" && currentUser.LastName != "" {
-				tempTag.Name = tempTag.Name + currentUser.FirstName + " " + currentUser.LastName + " "
-			}
+		tempTag.Name = currentHost + " - "
 
-			tempTag.Name = tempTag.Name + "(" + currentUser.UserName + ")"
+		if currentUser.FirstName != "" && currentUser.LastName != "" {
+			tempTag.Name = tempTag.Name + currentUser.FirstName + " " + currentUser.LastName + " "
+		}
 
-			// Does the tag already exist?
-			var tag jcapi.JCTag
+		tempTag.Name = tempTag.Name + "(" + currentUser.UserName + ")"
 
-			tag, err = jc.GetTagByName(tempTag.Name)
-			if err != nil && !strings.Contains(err.Error(), "unexpected end of JSON input") {
-				err = fmt.Errorf("Tag lookup failed for tag '%s', skipping this tag, err='%s'", tempTag.Name, err)
-				return
-			}
+		// Does the tag already exist?
+		var tag jcapi.JCTag
 
-			if tag.Id != "" {
-				// Yep, tag exists
-				fmt.Printf("\tTag '%s' already exists, not modifying it.\n", tempTag.Name)
-				return
-			}
+		tag, err = jc.GetTagByName(tempTag.Name)
+		if err != nil && !strings.Contains(err.Error(), "unexpected end of JSON input") {
+			err = fmt.Errorf("Tag lookup failed for tag '%s', skipping this tag, err='%s'", tempTag.Name, err)
+			return
+		}
 
-			opCode = jcapi.Insert
+		if tag.Id != "" {
+			// Yep, tag exists
+			fmt.Printf("\tTag '%s' already exists, not modifying it.\n", tempTag.Name)
+			return
+		}
 
-			// Build a suitable tag from the request's elements
-			tempTag.ApplyToJumpCloud = true
-			tempTag.Systems = append(tempTag.Systems, currentJCSystem.Id)
-			tempTag.SystemUsers = append(tempTag.SystemUsers, currentUserId)
+		opCode = jcapi.Insert
 
-			for _, adminId := range currentAdmins {
-				tempTag.SystemUsers = append(tempTag.SystemUsers, adminId)
-			}
+		// Build a suitable tag from the request's elements
+		tempTag.ApplyToJumpCloud = true
+		tempTag.Systems = append(tempTag.Systems, currentJCSystem.Id)
+		tempTag.SystemUsers = append(tempTag.SystemUsers, currentUserId)
 
-			// Create or modify the tag in JumpCloud
-			tempTag.Id, err = jc.AddUpdateTag(opCode, tempTag)
-			if err != nil {
-				err = fmt.Errorf("Could not POST tag '%s', err='%s'", tempTag.ToString(), err)
-			} else {
-				fmt.Printf("\tCreated tag '%s' (ID '%s')\n", tempTag.Name, tempTag.Id)
-			}
+		for _, adminId := range currentAdmins {
+			tempTag.SystemUsers = append(tempTag.SystemUsers, adminId)
+		}
+
+		// Create or modify the tag in JumpCloud
+		tempTag.Id, err = jc.AddUpdateTag(opCode, tempTag)
+		if err != nil {
+			err = fmt.Errorf("Could not POST tag '%s', err='%s'", tempTag.ToString(), err)
+		} else {
+			fmt.Printf("\tCreated tag '%s' (ID '%s')\n", tempTag.Name, tempTag.Id)
 		}
 	}
 
