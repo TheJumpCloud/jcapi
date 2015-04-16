@@ -243,6 +243,13 @@ func main() {
 	flag.StringVar(&apiKey, "key", "", "-key=<API-key-value>")
 	flag.Parse()
 
+	if csvFile == "" || apiKey == "" {
+		fmt.Println("Usage of ./CSVImporter:")
+		fmt.Println("  -csv=\"\": -csv=<filename>")
+		fmt.Println("  -key=\"\": -key=<API-key-value>")
+		return
+	}
+
 	// Attach to JumpCloud
 	jc := jcapi.NewJCAPI(apiKey, urlBase)
 
