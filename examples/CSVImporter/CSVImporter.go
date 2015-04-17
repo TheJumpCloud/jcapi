@@ -78,7 +78,7 @@ func GetUserIdFromUserName(users []jcapi.JCUser, name string) string {
 // Process the line read from the CSV file into JumpCloud. (helper function)
 //
 
-func ProcessCSVRecord(jc jcapi.JCAPI, userList []jcapi.JCUser, csvRecord []string) (err error) {
+func ProcessCSVRecord(jc jcapi.JCAPI, userList *[]jcapi.JCUser, csvRecord []string) (err error) {
 	// Setup work variables
 	var currentUser jcapi.JCUser
 	var currentHost string
@@ -119,19 +119,25 @@ func ProcessCSVRecord(jc jcapi.JCAPI, userList []jcapi.JCUser, csvRecord []strin
 	adminsSlice := csvRecord[9:]
 
 	for _, tempAdmin := range adminsSlice {
-		currentAdmins[tempAdmin] = GetUserIdFromUserName(userList, tempAdmin)
+		currentAdmins[tempAdmin] = GetUserIdFromUserName(*userList, tempAdmin)
 	}
 
 	// Determine operation to perform based on whether the current user
 	// is already in JumpCloud...
 	var opCode jcapi.JCOp
-	currentUserId := GetUserIdFromUserName(userList, currentUser.UserName)
+	currentUserId := GetUserIdFromUserName(*userList, currentUser.UserName)
 
 	if currentUserId != "" {
 		opCode = jcapi.Update
 		currentUser.Id = currentUserId
 	} else {
 		opCode = jcapi.Insert
+	}
+
+	// Sanity-check any UID/GID pair supplied and set management mode accordingly
+	if (currentUser.Uid == "" && currentUser.Gid != "") || (currentUser.Uid != "" && currentUser.Gid == "") {
+		err = fmt.Errorf("Could not process user '%s', err=Invalid UID:GID pair '%s:%s', both must be specified", currentUser.ToString(), currentUser.Uid, currentUser.Gid)
+		return
 	}
 
 	if currentUser.Uid != "" || currentUser.Gid != "" {
@@ -144,12 +150,15 @@ func ProcessCSVRecord(jc jcapi.JCAPI, userList []jcapi.JCUser, csvRecord []strin
 	if err != nil {
 		err = fmt.Errorf("Could not %s user '%s', err='%s'", jcapi.MapJCOpToHTTP(opCode), currentUser.ToString(), err)
 		return
+	}
+
+	if opCode == jcapi.Update {
+		fmt.Printf("\tUser '%s' (ID '%s') updated from input file\n", currentUser.UserName, currentUserId)
 	} else {
-		if opCode == jcapi.Update {
-			fmt.Printf("\tUser '%s' (ID '%s') updated from input file\n", currentUser.UserName, currentUserId)
-		} else {
-			fmt.Printf("\tLoaded user '%s' (ID '%s')\n", currentUser.UserName, currentUserId)
-		}
+		fmt.Printf("\tLoaded user '%s' (ID '%s')\n", currentUser.UserName, currentUserId)
+		// Add this user to our list
+		currentUser.Id = currentUserId
+		*userList = append(*userList, currentUser)
 	}
 
 	// Create/associate JumpCloud tags for the host and user...
@@ -290,7 +299,7 @@ func main() {
 		fmt.Printf("Line #%d:\n", recordCount)
 
 		// Process this request record
-		err = ProcessCSVRecord(jc, userList, record)
+		err = ProcessCSVRecord(jc, &userList, record)
 		if err != nil {
 			fmt.Printf("\tERROR: %s\n", err)
 		}
