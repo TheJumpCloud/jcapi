@@ -293,7 +293,7 @@ func main() {
 	}
 
 	// Print run summary
-	fmt.Printf("\n\nProcessed %d records from file %s \n", recordCount, csvFile)
+	fmt.Printf("\n\nProcessed %d records from file %s \n", recordCount-1, csvFile)
 
 	return
 }
