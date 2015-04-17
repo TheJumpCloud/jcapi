@@ -20,7 +20,74 @@ func checkEnv(t *testing.T) {
 	}
 }
 
-func TestCSVImporter(t *testing.T) {
+func TestCSVImportNoTag(t *testing.T) {
+	checkEnv(t)
+
+	// Attach to JumpCloud
+	jc := jcapi.NewJCAPI(testAPIKey, testUrlBase)
+
+	// Fetch all users in JumpCloud
+	userList, err := jc.GetSystemUsers(false)
+
+	if err != nil {
+		t.Fatalf("Could not read system users, err='%s'\n", err)
+		return
+	}
+
+	// Fetch our system from JumpCloud
+	system, err := jc.GetSystemById(testSystemID, true)
+
+	if err != nil {
+		t.Fatalf("Could not read system info for ID='%s', err='%s'\n", testSystemID, err)
+		return
+	}
+
+	if system.Hostname == "" {
+		t.Fatalf("Could not read system info for ID='%s', err='%s'\n", testSystemID, err)
+		return
+	}
+
+	// Create a CSV record to add a test user without a tag request
+	csvrec := []string{"Frank", "Wilson", "fw", "test+1@jumpcloud.com", "", "", "T", "", ""}
+
+	// Process this request record
+	err = ProcessCSVRecord(jc, &userList, csvrec)
+	if err != nil {
+		t.Fatalf("\tERROR: %s\n", err)
+	}
+
+	// Fetch our freshly minted user
+	ourUserList, err := jc.GetSystemUserByEmail("test+1@jumpcloud.com", true)
+
+	if err != nil {
+		t.Fatalf("Could not read system user, err='%s'\n", err)
+		return
+	}
+
+	tempUserId := GetUserIdFromUserName(ourUserList, "fw")
+
+	if tempUserId == "" {
+		t.Fatalf("Could not read system user, err='%s'\n", err)
+		return
+	}
+
+	tempUser, err := jc.GetSystemUserById(tempUserId, true)
+
+	if err != nil {
+		t.Fatalf("Could not read system user, err='%s'\n", err)
+		return
+	}
+
+	// Ensure the user has no associated tags
+	if len(tempUser.Tags) > 0 {
+		t.Fatalf("Unexpectedly found tags associated with user\n")
+		return
+	}
+
+	return
+}
+
+func TestCSVUpdate(t *testing.T) {
 	checkEnv(t)
 
 	// Attach to JumpCloud
@@ -48,13 +115,16 @@ func TestCSVImporter(t *testing.T) {
 	}
 
 	// Create a CSV record to add a test user
-	csvrec := []string{"Joe", "Smith", "js", "TheMan@jumpcloud.com", "", "", "T", "", ""}
+	csvrec := []string{"Joe", "Smith", "js", "test+2@jumpcloud.com", "", "", "T", "", ""}
 
 	// Process this request record
-	ProcessCSVRecord(jc, userList, csvrec)
+	err = ProcessCSVRecord(jc, &userList, csvrec)
+	if err != nil {
+		t.Fatalf("\tERROR: %s\n", err)
+	}
 
 	// Fetch our freshly minted user
-	ourUserList, err := jc.GetSystemUserByEmail("TheMan@jumpcloud.com", true)
+	ourUserList, err := jc.GetSystemUserByEmail("test+2@jumpcloud.com", true)
 
 	if err != nil {
 		t.Fatalf("Could not read system user, err='%s'\n", err)
@@ -75,9 +145,8 @@ func TestCSVImporter(t *testing.T) {
 		return
 	}
 
-	// Ensure the user has no associated tags
-	if len(tempUser.Tags) > 0 {
-		t.Fatalf("Unexpectedly found tags associated with user\n")
+	if !tempUser.Sudo {
+		t.Fatalf("System user does not have expected sudo rights\n")
 		return
 	}
 
@@ -89,13 +158,74 @@ func TestCSVImporter(t *testing.T) {
 		return
 	}
 
-	// Update our user to add a tag
-	csvrec = []string{"Joe", "Smith", "js", "TheMan@jumpcloud.com", "", "", "T", "", system.Hostname}
+	// Update our user to remove sudo righs
+	csvrec = []string{"Joe", "Smith", "js", "test+2@jumpcloud.com", "", "", "F", "", ""}
 
-	ProcessCSVRecord(jc, userList, csvrec)
+	err = ProcessCSVRecord(jc, &userList, csvrec)
+	if err != nil {
+		t.Fatalf("\tERROR: %s\n", err)
+	}
+
+	// Refetch our user...they should not have sudo
+	tempUser, err = jc.GetSystemUserById(tempUserId, true)
+
+	if err != nil {
+		t.Fatalf("Could not read system user, err='%s'\n", err)
+		return
+	}
+
+	if tempUser.Sudo {
+		t.Fatalf("Sudo rights unexpectedly found for user\n")
+		return
+	}
+
+	return
+}
+
+func TestCSVImportAndTag(t *testing.T) {
+	checkEnv(t)
+
+	// Attach to JumpCloud
+	jc := jcapi.NewJCAPI(testAPIKey, testUrlBase)
+
+	// Fetch all users in JumpCloud
+	userList, err := jc.GetSystemUsers(false)
+
+	if err != nil {
+		t.Fatalf("Could not read system users, err='%s'\n", err)
+		return
+	}
+
+	// Fetch our system from JumpCloud
+	system, err := jc.GetSystemById(testSystemID, true)
+
+	if err != nil {
+		t.Fatalf("Could not read system info for ID='%s', err='%s'\n", testSystemID, err)
+		return
+	}
+
+	if system.Hostname == "" {
+		t.Fatalf("Could not read system info for ID='%s', err='%s'\n", testSystemID, err)
+		return
+	}
+
+	// Create our user along with a tag on our test system
+	csvrec := []string{"Bob", "Jones", "bobby", "test+3@jumpcloud.com", "", "", "FALSE", "", system.Hostname}
+
+	err = ProcessCSVRecord(jc, &userList, csvrec)
+	if err != nil {
+		t.Fatalf("\tERROR: %s\n", err)
+	}
 
 	// Refetch our user...they should now have a tag associated with the host and tag name we provided
-	tempUser, err = jc.GetSystemUserById(tempUserId, true)
+	tempUserId := GetUserIdFromUserName(userList, "bobby")
+
+	if tempUserId == "" {
+		t.Fatalf("Could not read system user, err='%s'\n", err)
+		return
+	}
+
+	tempUser, err := jc.GetSystemUserById(tempUserId, true)
 
 	if err != nil {
 		t.Fatalf("Could not read system user, err='%s'\n", err)
@@ -108,7 +238,7 @@ func TestCSVImporter(t *testing.T) {
 	}
 
 	foundIt := false
-	testTagName := system.Hostname + " - Joe Smith (js)"
+	testTagName := system.Hostname + " - Bob Jones (bobby)"
 
 	for _, checkTag := range tempUser.Tags {
 		if checkTag.Name == testTagName {
