@@ -164,19 +164,16 @@ func ProcessCSVRecord(jc jcapi.JCAPI, userList []jcapi.JCUser, csvRecord []strin
 			return
 		}
 
-		if len(tempSysList) > 1 {
-			err = fmt.Errorf("Found multiple hostnames for '%s', so cannot build a tag for it.\n", currentHost)
+		switch {
+		case len(tempSysList) > 1:
+			err = fmt.Errorf("Found multiple hostnames for '%s', cannot build a tag for it.", currentHost)
 			return
-		}
-
-		if len(tempSysList) == 1 {
+		case len(tempSysList) == 0:
+			err = fmt.Errorf("Could not find a system for '%s', cannot build a tag for this user.", currentHost)
+			return
+		case len(tempSysList) == 1:
 			currentJCSystem = tempSysList[0]
-		} else {
-			currentJCSystem.Id = ""
-		}
-
-		if currentHost == "" {
-			// No more work to do on this line... we don't add tags without systems.
+		default:
 			return
 		}
 
