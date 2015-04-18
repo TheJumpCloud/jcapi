@@ -119,6 +119,9 @@ func ProcessCSVRecord(jc jcapi.JCAPI, userList *[]jcapi.JCUser, csvRecord []stri
 	adminsSlice := csvRecord[9:]
 
 	for _, tempAdmin := range adminsSlice {
+		// If there were no admins to slice, the slice itself will still have
+		// a single null element that is returned.  Account for that, but
+		// otherwise add-in the values found.
 		if tempAdmin != "" {
 			currentAdmins[tempAdmin] = GetUserIdFromUserName(*userList, tempAdmin)
 		}
@@ -222,9 +225,7 @@ func ProcessCSVRecord(jc jcapi.JCAPI, userList *[]jcapi.JCUser, csvRecord []stri
 		tempTag.SystemUsers = append(tempTag.SystemUsers, currentUserId)
 
 		for _, adminId := range currentAdmins {
-			if adminId != "" {
-				tempTag.SystemUsers = append(tempTag.SystemUsers, adminId)
-			}
+			tempTag.SystemUsers = append(tempTag.SystemUsers, adminId)
 		}
 
 		// Create or modify the tag in JumpCloud
