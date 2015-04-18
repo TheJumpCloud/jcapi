@@ -119,7 +119,9 @@ func ProcessCSVRecord(jc jcapi.JCAPI, userList *[]jcapi.JCUser, csvRecord []stri
 	adminsSlice := csvRecord[9:]
 
 	for _, tempAdmin := range adminsSlice {
-		currentAdmins[tempAdmin] = GetUserIdFromUserName(*userList, tempAdmin)
+		if tempAdmin != "" {
+			currentAdmins[tempAdmin] = GetUserIdFromUserName(*userList, tempAdmin)
+		}
 	}
 
 	// Determine operation to perform based on whether the current user
@@ -220,7 +222,9 @@ func ProcessCSVRecord(jc jcapi.JCAPI, userList *[]jcapi.JCUser, csvRecord []stri
 		tempTag.SystemUsers = append(tempTag.SystemUsers, currentUserId)
 
 		for _, adminId := range currentAdmins {
-			tempTag.SystemUsers = append(tempTag.SystemUsers, adminId)
+			if adminId != "" {
+				tempTag.SystemUsers = append(tempTag.SystemUsers, adminId)
+			}
 		}
 
 		// Create or modify the tag in JumpCloud
