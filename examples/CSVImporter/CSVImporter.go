@@ -119,7 +119,12 @@ func ProcessCSVRecord(jc jcapi.JCAPI, userList *[]jcapi.JCUser, csvRecord []stri
 	adminsSlice := csvRecord[9:]
 
 	for _, tempAdmin := range adminsSlice {
-		currentAdmins[tempAdmin] = GetUserIdFromUserName(*userList, tempAdmin)
+		// If there were no admins to slice, the slice itself will still have
+		// a single null element that is returned.  Account for that, but
+		// otherwise add-in the values found.
+		if tempAdmin != "" {
+			currentAdmins[tempAdmin] = GetUserIdFromUserName(*userList, tempAdmin)
+		}
 	}
 
 	// Determine operation to perform based on whether the current user
