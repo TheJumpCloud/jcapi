@@ -257,3 +257,24 @@ func TestCSVImportAndTag(t *testing.T) {
 
 	return
 }
+
+func TestCSVBadRecord(t *testing.T) {
+	checkEnv(t)
+
+	// Attach to JumpCloud
+	jc := jcapi.NewJCAPI(testAPIKey, testUrlBase)
+
+	// Create an empty user list
+	userList := []jcapi.JCUser{}
+
+	// Create a CSV record which is incomplete (not enough fields)
+	csvrec := []string{"Rob", "Robertson", "rr", "test+4@jumpcloud.com", "T"}
+
+	// Process this request record...we expect an error here
+	err := ProcessCSVRecord(jc, &userList, csvrec)
+	if err == nil {
+		t.Fatalf("Expected error about too few fields in record\n")
+	}
+
+	return
+}
