@@ -19,4 +19,4 @@ This API exposes several JumpCloud REST APIs:
 
 Special Thanks
 ==============
-Graham Green (grahamgreen@clearcareonline.com) - for adding support for Systems!
+Graham Green (grahamgreen@clearcareonline.com) - for adding support for Systems! Also, see https://github.com/clearcare/jumpcloud for a cool binary wrapper that lets you do things similar to the JumpCloud Ruby gem!
