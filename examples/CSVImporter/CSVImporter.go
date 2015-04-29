@@ -79,6 +79,12 @@ func GetUserIdFromUserName(users []jcapi.JCUser, name string) string {
 //
 
 func ProcessCSVRecord(jc jcapi.JCAPI, userList *[]jcapi.JCUser, csvRecord []string) (err error) {
+	// Verify the record is complete enough to process
+	if len(csvRecord) < 9 {
+		err = fmt.Errorf("Line is improperly formatted (missing fields), skipping line.")
+		return
+	}
+
 	// Setup work variables
 	var currentUser jcapi.JCUser
 	var currentHost string
