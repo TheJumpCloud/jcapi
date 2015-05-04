@@ -139,7 +139,7 @@ func getJCSystemFieldsFromInterface(fields map[string]interface{}, system *JCSys
 	if _, exists := fields["templateName"]; exists {
 		system.TemplateName = fields["templateName"].(string)
 	}
-	if _, exists := fields["allowSsgRootLogin"]; exists {
+	if _, exists := fields["allowSshRootLogin"]; exists {
 		system.AllowSshRootLogin = fields["allowSshRootLogin"].(bool)
 	}
 	if _, exists := fields["id"]; exists {
