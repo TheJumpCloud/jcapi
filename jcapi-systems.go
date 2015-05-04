@@ -8,7 +8,7 @@ import (
 type JCSystem struct {
 	Os                             string  `json:os`
 	TemplateName                   string  `json:templateName`
-	AllowSshRootLogin              bool    `json:allowSsgRootLogin`
+	AllowSshRootLogin              bool    `json:allowSshRootLogin`
 	Id                             string  `json:id`
 	LastContact                    string  `json:lastContact`
 	RemoteIP                       string  `json:remoteIP`
