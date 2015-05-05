@@ -6,35 +6,35 @@ import (
 )
 
 type JCSystem struct {
-	Os                             string  `json:os`
-	TemplateName                   string  `json:templateName`
-	AllowSshRootLogin              bool    `json:allowSshRootLogin`
-	Id                             string  `json:id`
-	LastContact                    string  `json:lastContact`
-	RemoteIP                       string  `json:remoteIP`
-	Active                         bool    `json:active`
-	SshRootEnabled                 bool    `json:sshRootEnabled`
-	AmazonInstanceID               string  `json:amazonInstanceID,omitempty`
-	SshPassEnabled                 bool    `json:sshPassEnabled`
-	Version                        string  `json:version`
-	AgentVersion                   string  `json:agentVersion`
-	AllowPublicKeyAuth             bool    `json:allowPublicKeyAuthentication`
-	Organization                   string  `json:organization`
-	Created                        string  `json:created`
-	Arch                           string  `json:arch`
-	SystemTimezone                 float64 `json:systemTimeZone`
-	AllowSshPasswordAuthentication bool    `json:allowSshPasswordAuthentication`
-	DisplayName                    string  `json:displayName`
-	ModifySSHDConfig               bool    `json:modifySSHDConfig`
-	AllowMultiFactorAuthentication bool    `json:allowMultiFactorAuthentication`
-	Hostname                       string  `json:hostname`
+	Os                             string  `json:"os,omitempty"`
+	TemplateName                   string  `json:"templateName,omitempty"`
+	AllowSshRootLogin              bool    `json:"allowSshRootLogin"`
+	Id                             string  `json:"id"`
+	LastContact                    string  `json:"lastContact,omitempty"`
+	RemoteIP                       string  `json:"remoteIP,omitempty"`
+	Active                         bool    `json:"active,omitempty"`
+	SshRootEnabled                 bool    `json:"sshRootEnabled"`
+	AmazonInstanceID               string  `json:"amazonInstanceID,omitempty"`
+	SshPassEnabled                 bool    `json:"sshPassEnabled,omitempty"`
+	Version                        string  `json:"version,omitempty"`
+	AgentVersion                   string  `json:"agentVersion,omitempty"`
+	AllowPublicKeyAuth             bool    `json:"allowPublicKeyAuthentication"`
+	Organization                   string  `json:"organization,omitempty"`
+	Created                        string  `json:"created,omitempty"`
+	Arch                           string  `json:"arch,omitempty"`
+	SystemTimezone                 float64 `json:"systemTimeZone,omitempty"`
+	AllowSshPasswordAuthentication bool    `json:"allowSshPasswordAuthentication"`
+	DisplayName                    string  `json:"displayName"`
+	ModifySSHDConfig               bool    `json:"modifySSHDConfig"`
+	AllowMultiFactorAuthentication bool    `json:"allowMultiFactorAuthentication"`
+	Hostname                       string  `json:"hostname,omitempty"`
 
-	TagList               []string `json:"tags"`
-	Patches               []string `json:patches`
-	SshParamList          []string `json:sshParams`
-	PatchAlarmList        []string `json:patchAlarms`
-	NetworkInterfaceList  []string `json:networkInterfaces`
-	ConnectionHistoryList []string `json:connectionHistory`
+	TagList               []string `json:"tags,omitempty"`
+	Patches               []string `json:"patches,omitempty"`
+	SshParamList          []string `json:"sshParams,omitempty"`
+	PatchAlarmList        []string `json:"patchAlarms,omitempty"`
+	NetworkInterfaceList  []string `json:"networkInterfaces,omitempty"`
+	ConnectionHistoryList []string `json:"connectionHistory,omitempty"`
 
 	Tags              []JCTag
 	SshdParams        []JCSSHDParam
@@ -42,15 +42,15 @@ type JCSystem struct {
 }
 
 type JCSSHDParam struct {
-	Name  string `json:name`
-	Value string `json:value`
+	Name  string `json:"name"`
+	Value string `json:"value"`
 }
 
 type JCNetworkInterface struct {
-	Name     string `json:name`
-	Internal bool   `json:internal`
-	Family   string `json:family`
-	Address  string `json:address`
+	Name     string `json:"name"`
+	Internal bool   `json:"internal"`
+	Family   string `json:"family"`
+	Address  string `json:"address"`
 }
 
 func SystemsToString(systems []JCSystem) string {
