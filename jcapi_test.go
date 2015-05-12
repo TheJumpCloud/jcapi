@@ -7,8 +7,7 @@ import (
 )
 
 const (
-	//testUrlBase string = "https://console.jumpcloud.com/api"
-	testUrlBase string = "http://localhost:3004/api"
+	testUrlBase string = "https://console.jumpcloud.com/api"
 	authUrlBase string = "https://auth.jumpcloud.com"
 )
 
@@ -342,8 +341,9 @@ func checkAuth(t *testing.T, expectedResult bool, username, password, tag string
 	}
 }
 
-// UNCOMMENT
-func testRestAuth(t *testing.T) {
+// NOTE: Requires a functional Auth Server for testing, so if your auth server is
+// local, make sure it's running and happy.
+func TestRestAuth(t *testing.T) {
 	jcapi := NewJCAPI(testAPIKey, testUrlBase)
 
 	newUser := MakeTestUser()
