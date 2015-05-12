@@ -36,6 +36,12 @@ const (
 	searchSkipInterval int = 1000
 )
 
+const (
+	BAD_FIELD_NAME      = -3
+	OBJECT_NOT_FOUND    = -2
+	BAD_COMPARISON_TYPE = -1
+)
+
 type JCError interface {
 	Error() string
 }

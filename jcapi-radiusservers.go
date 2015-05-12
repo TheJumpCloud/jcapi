@@ -13,12 +13,6 @@ type JCRadiusServer struct {
 	TagList         []string `json:"tags,omitempty"`
 }
 
-const (
-	BAD_FIELD_NAME      = -3
-	OBJECT_NOT_FOUND    = -2
-	BAD_COMPARISON_TYPE = -1
-)
-
 func (e JCRadiusServer) ToString() string {
 	return fmt.Sprintf("radiusserver: id='%s' - name='%s' - IP='%s' - Secret='%s' - TagList=%s",
 		e.Id, e.Name, e.NetworkSourceIP, e.SharedSecret, e.TagList)
