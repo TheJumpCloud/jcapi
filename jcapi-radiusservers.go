@@ -100,8 +100,6 @@ func (jc JCAPI) AddUpdateRadiusServer(op JCOp, radiusServer JCRadiusServer) (id 
 		return "", fmt.Errorf("ERROR: Could not marshal JCRadius object, err='%s'", err)
 	}
 
-	//fmt.Printf("op='%s', data='%s'\n", MapJCOpToHTTP(op), string(data))
-
 	url := "/radiusservers"
 	if op == Update {
 		url += "/" + radiusServer.Id
