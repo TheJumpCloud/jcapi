@@ -131,7 +131,7 @@ func (jc JCAPI) GetIDSourceByName(name string) (JCIDSource, bool, JCError) {
 func (jc JCAPI) AddUpdateIDSource(op JCOp, idSource JCIDSource) (string, JCError) {
 	data, err := idSource.marshalJSON(op == Insert)
 	if err != nil {
-		return "", fmt.Errorf("ERROR: Could not marshal JCTag object, err='%s'", err)
+		return "", fmt.Errorf("ERROR: Could not marshal JCIDSource object, err='%s'", err)
 	}
 
 	url := "/idsources"

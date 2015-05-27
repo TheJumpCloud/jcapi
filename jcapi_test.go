@@ -1,6 +1,7 @@
 package jcapi
 
 import (
+	"fmt"
 	"os"
 	"testing"
 )
@@ -30,15 +31,20 @@ func MakeTestUser() (user JCUser) {
 
 	return
 }
-func TestSystems(t *testing.T) {
+
+// TODO: This test requires attention, it depends on conditions that it doesn't
+// create...
+func testSystems(t *testing.T) {
 	jcapi := NewJCAPI(testAPIKey, testUrlBase)
+
 	systems, err := jcapi.GetSystems(true)
 	if err != nil {
-		t.Fatalf("couldn't get system")
+		t.Fatalf("couldn't get systems, err='%s'", err.Error())
 	}
 	if len(systems) == 0 {
 		t.Fatalf("no systems found")
 	}
+
 	//fmt.Printf("'%d' Systems found\n", len(systems))
 	testSystem := systems[0]
 	sysByID, err := jcapi.GetSystemById(testSystem.Id, true)
@@ -208,20 +214,7 @@ func TestSystemUsers(t *testing.T) {
 }
 
 func MakeTestTag() (tag JCTag) {
-	tag = JCTag{
-		//Had to remove the '#' cause it was breaking
-		//the unmarshal in the Do func and i'm
-		//not sure how to fix it
-		Name:              "Test tag 1",
-		GroupName:         "testtag1",
-		Systems:           make([]string, 0),
-		SystemUsers:       make([]string, 0),
-		Expired:           false,
-		Selected:          false,
-		ExternallyManaged: false,
-	}
-
-	return
+	return mockEmptyTag("Test tag 1", "testtag1")
 }
 
 func TestTags(t *testing.T) {
@@ -348,6 +341,8 @@ func checkAuth(t *testing.T, expectedResult bool, username, password, tag string
 	}
 }
 
+// NOTE: Requires a functional Auth Server for testing, so if your auth server is
+// local, make sure it's running and happy.
 func TestRestAuth(t *testing.T) {
 	jcapi := NewJCAPI(testAPIKey, testUrlBase)
 
@@ -387,4 +382,155 @@ func TestRestAuth(t *testing.T) {
 	checkAuth(t, true, newUser.UserName, newUser.Password, newTag.Name)
 	checkAuth(t, false, newUser.UserName, newUser.Password, "not a real tag")
 	checkAuth(t, true, newUser.UserName, newUser.Password, "")
+}
+
+func mockEmptyTag(name, groupName string) (tag JCTag) {
+	tag = JCTag{
+		Name:              name,
+		GroupName:         groupName,
+		Systems:           make([]string, 0),
+		SystemUsers:       make([]string, 0),
+		Expired:           false,
+		Selected:          false,
+		ExternallyManaged: false,
+	}
+
+	return
+}
+
+func mockTestRadiusServer(name, ip, secret string, tagList []string) (radiusServer *JCRadiusServer) {
+	return &JCRadiusServer{
+		Name:            name,
+		NetworkSourceIP: ip,
+		SharedSecret:    secret,
+		TagList:         tagList,
+	}
+}
+
+const (
+	RADIUS_SERVER_COUNT int = 5
+)
+
+func testRadiusServerCalls(t *testing.T, jcapi JCAPI, op JCOp, rs *JCRadiusServer, expectedError error) (id string) {
+	var err error
+
+	switch op {
+	case Insert:
+		id, err = jcapi.AddUpdateRadiusServer(op, *rs)
+	case Update:
+		id, err = jcapi.AddUpdateRadiusServer(op, *rs)
+	case Delete:
+		err = jcapi.DeleteRadiusServer(*rs)
+	}
+
+	opText := MapJCOpToHTTP(op)
+
+	if err != nil && expectedError == nil {
+		t.Fatalf("Testing with '%s' of '%s', expected nil, but got '%s'", opText, rs.ToString(), err.Error())
+	}
+	if err == nil && expectedError != nil {
+		t.Fatalf("Testing with '%s' of '%s', expected '%s', but got nil", opText, rs.ToString(), expectedError.Error())
+	}
+	if err != nil && expectedError != nil && err.Error() != expectedError.Error() {
+		t.Fatalf("Testing with '%s' of '%s', expected '%s', but got '%s'", opText, rs.ToString(), expectedError, err.Error())
+	}
+
+	return
+}
+
+func TestRadiusServer(t *testing.T) {
+
+	jcapi := NewJCAPI(testAPIKey, testUrlBase)
+
+	tagIds := make([]string, RADIUS_SERVER_COUNT)
+
+	//
+	// Let's get a few tags added to our account
+	//
+	for i := 0; i < RADIUS_SERVER_COUNT; i++ {
+		tag := mockEmptyTag(fmt.Sprintf(" RS test tag %d", i), "")
+
+		id, err := jcapi.AddUpdateTag(Insert, tag)
+		if err != nil {
+			t.Fatalf("Could not insert a new test tag for Radius Server test, err='%s'", err.Error())
+		}
+
+		tag.Id = id
+		defer jcapi.DeleteTag(tag)
+
+		tagIds[i] = id
+	}
+
+	// Should be okay on POST/PUT
+	rs1 := mockTestRadiusServer("Boulder Network", "12.13.14.15", "my-super-secret", tagIds)
+
+	// should fail on POST/PUT because of space in the secret
+	rs2 := mockTestRadiusServer("Denver Network", "34.42.53.22", "another secret", tagIds)
+
+	// Should be okay on POST/PUT
+	emptyTags := make([]string, 0)
+	rs3 := mockTestRadiusServer("Boston Network", "55.66.23.43", "secret", emptyTags)
+
+	rs1.Id = testRadiusServerCalls(t, jcapi, Insert, rs1, nil)
+
+	testRadiusServerCalls(t, jcapi, Update, rs1, nil)
+
+	testRadiusServerCalls(t, jcapi, Delete, rs1, nil)
+
+	// Test with the other two objects...
+	rs2.Id = testRadiusServerCalls(t, jcapi, Insert, rs2, fmt.Errorf("ERROR: Could not post new JCIDSource object, err='JumpCloud HTTP response status='400 Bad Request''"))
+
+	rs3.Id = testRadiusServerCalls(t, jcapi, Insert, rs3, nil)
+
+	testRadiusServerCalls(t, jcapi, Update, rs3, nil)
+
+	testRadiusServerCalls(t, jcapi, Delete, rs3, nil)
+
+	// Validate the get and find functions...
+	rs1.Id = testRadiusServerCalls(t, jcapi, Insert, rs1, nil)
+	defer testRadiusServerCalls(t, jcapi, Delete, rs1, nil)
+
+	rs3.Id = testRadiusServerCalls(t, jcapi, Insert, rs3, nil)
+	defer testRadiusServerCalls(t, jcapi, Delete, rs3, nil)
+
+	radservers, err := jcapi.GetAllRadiusServers()
+	if err != nil {
+		t.Fatalf("Could not get all the RADIUS servers, err='%s'", err.Error())
+	}
+
+	if radservers[0].ToString() != rs1.ToString() {
+		t.Fatalf("Systems[0]='%s' - rs1='%s' - string compare failed", radservers[0].ToString(), rs1.ToString())
+	}
+
+	if radservers[1].ToString() != rs3.ToString() {
+		t.Fatalf("Systems[1]='%s' - rs3='%s' - string compare failed", radservers[1].ToString(), rs3.ToString())
+	}
+
+	foundRs := FindRadiusServerById(radservers, rs1.Id)
+
+	if foundRs == nil {
+		t.Fatalf("Could not find expected ID '%s'", rs1.Id)
+	}
+
+	if foundRs.ToString() != rs1.ToString() {
+		t.Fatalf("Find by ID %s failed, got '%s', but expected '%s'", rs1.Id, foundRs.ToString(), rs1.ToString())
+	}
+
+	foundRs = FindRadiusServerById(radservers, rs3.Id)
+
+	if foundRs == nil {
+		t.Fatalf("Could not find expected ID '%s'", rs3.Id)
+	}
+
+	if foundRs.ToString() != rs3.ToString() {
+		t.Fatalf("Find by ID %s failed, got '%s', but expected '%s'", rs3.Id, foundRs.ToString(), rs3.ToString())
+	}
+
+	foundRs = FindRadiusServerById(radservers, "id not there")
+
+	if foundRs != nil {
+		t.Fatalf("Found an ID we didn't expect and got back '%s'", foundRs.ToString())
+	}
+
+	return
 }

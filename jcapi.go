@@ -6,8 +6,9 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"time"
+	"reflect"
 	"strings"
+	"time"
 )
 
 const (
@@ -33,6 +34,12 @@ type JCAPI struct {
 const (
 	searchLimit        int = 1000
 	searchSkipInterval int = 1000
+)
+
+const (
+	BAD_FIELD_NAME      = -3
+	OBJECT_NOT_FOUND    = -2
+	BAD_COMPARISON_TYPE = -1
 )
 
 type JCError interface {
@@ -272,4 +279,39 @@ func GetTrueOrFalse(input interface{}) bool {
 	}
 
 	return returnVal
+}
+
+func FindObject(sourceArray []interface{}, fieldName string, compareData interface{}) (index int) {
+
+	if len(sourceArray) == 0 {
+		return OBJECT_NOT_FOUND
+	}
+
+	//
+	// Get the specified field name of the first struct
+	//
+	s := reflect.ValueOf(sourceArray[0]).FieldByName(fieldName)
+
+	// Make sure the requested field name exists in the struct
+	if s.Kind() == reflect.Invalid {
+		return BAD_FIELD_NAME
+	}
+
+	// Make sure the compareData type matches that the field specified by fieldName
+	if s.Type() != reflect.TypeOf(compareData) {
+		return BAD_COMPARISON_TYPE
+	}
+
+	//
+	// Walk the array and see if we can find a matching object
+	//
+	for fieldIndex, _ := range sourceArray {
+		s = reflect.ValueOf(sourceArray[fieldIndex]).FieldByName(fieldName)
+
+		if reflect.DeepEqual(s.Interface(), compareData) {
+			return fieldIndex
+		}
+	}
+
+	return OBJECT_NOT_FOUND
 }
