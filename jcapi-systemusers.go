@@ -55,6 +55,8 @@ func (jcuser JCUser) ToString() string {
 	returnVal += fmt.Sprintf("JCUSER: ExternallyManaged=[%t] - ExternalDN=[%s] - ExternalSourceType=[%s]\n",
 		jcuser.ExternallyManaged, jcuser.ExternalDN, jcuser.ExternalSourceType)
 
+	returnVal += fmt.Sprintf("JCUSER: PasswordExpired=[%t]\n", jcuser.PasswordExpired)
+
 	for _, tag := range jcuser.Tags {
 		returnVal += fmt.Sprintf("\t%s\n", tag.ToString())
 	}
@@ -99,6 +101,14 @@ func getJCUserFieldsFromInterface(fields map[string]interface{}, user *JCUser) {
 	}
 	if _, exists := fields["enable_managed_uid"]; exists {
 		user.EnableManagedUid = fields["enable_managed_uid"].(bool)
+	}
+
+	if _, exists := fields["password_expired"]; exists {
+		user.PasswordExpired = fields["password_expired"].(bool)
+	}
+
+	if _, exists := fields["password_date"]; exists {
+		user.PasswordDate = fields["password_date"].(string)
 	}
 }
 

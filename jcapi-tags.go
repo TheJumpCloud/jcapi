@@ -78,6 +78,10 @@ func (jc JCAPI) getTagFieldsFromInterface(tagData map[string]interface{}, tag *J
 		tag.ExpirationTime = getStringOrNil(tagData["expirationTime"].(interface{}))
 	}
 
+	if tagData["expired"] != nil {
+		tag.Expired = tagData["expired"].(bool)
+	}
+
 	tag.Systems = jc.extractStringArray(tagData["systems"].([]interface{}))
 	tag.SystemUsers = jc.extractStringArray(tagData["systemusers"].([]interface{}))
 	tag.RegularExpressions = jc.extractStringArray(tagData["regularExpressions"].([]interface{}))
