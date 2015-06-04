@@ -275,37 +275,31 @@ func getFieldInt(fieldName string, fields map[string]interface{}) (data int) {
 	return
 }
 
-func getStringOrNil(input interface{}) string {
-	returnVal := ""
-
+func getStringOrNil(input interface{}) (s string) {
 	switch input.(type) {
 	case string:
-		returnVal = input.(string)
+		s = input.(string)
 	}
 
-	return returnVal
+	return
 }
 
-func getUint16OrNil(input interface{}) uint16 {
-	var returnVal uint16
-
+func getUint16OrNil(input interface{}) (i uint16) {
 	switch input.(type) {
 	case uint16:
-		returnVal = input.(uint16)
+		i = input.(uint16)
 	}
 
-	return returnVal
+	return
 }
 
-func getIntOrNil(input interface{}) int {
-	var returnVal int
-
+func getIntOrNil(input interface{}) (i int) {
 	switch input.(type) {
 	case int:
-		returnVal = input.(int)
+		i = input.(int)
 	}
 
-	return returnVal
+	return
 }
 
 func GetTrueOrFalse(input interface{}) bool {

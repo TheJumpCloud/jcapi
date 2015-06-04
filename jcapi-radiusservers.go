@@ -76,7 +76,7 @@ func FindRadiusServerById(radiusServers []JCRadiusServer, id string) (radiusServ
 }
 
 func GetInterfaceArrayFromJCRadiusServer(radiusServers []JCRadiusServer) (interfaceArray []interface{}) {
-	interfaceArray = make([]interface{}, len(radiusServers), len(radiusServers))
+	interfaceArray = make([]interface{}, len(radiusServers))
 
 	for i := range radiusServers {
 		interfaceArray[i] = radiusServers[i]
