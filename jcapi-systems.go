@@ -229,6 +229,16 @@ func getJCSystemsFromInterface(systemInt interface{}) []JCSystem {
 	return returnVal
 }
 
+func GetInterfaceArrayFromJCSystems(systems []JCSystem) (interfaceArray []interface{}) {
+	interfaceArray = make([]interface{}, len(systems), len(systems))
+
+	for i := range systems {
+		interfaceArray[i] = systems[i]
+	}
+
+	return
+}
+
 // Executes a search by hostname via the JumpCloud API
 func (jc JCAPI) GetSystemByHostName(hostname string, withTags bool) ([]JCSystem, JCError) {
 	var returnVal []JCSystem

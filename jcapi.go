@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"reflect"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -230,7 +231,7 @@ func MapJCOpToHTTP(op JCOp) string {
 //
 // Interface Conversion Helper Functions
 //
-func (jc JCAPI) extractStringArray(input []interface{}) []string {
+func extractStringArray(input []interface{}) []string {
 	var returnVal []string
 
 	for _, str := range input {
@@ -238,6 +239,40 @@ func (jc JCAPI) extractStringArray(input []interface{}) []string {
 	}
 
 	return returnVal
+}
+func getFieldStringArray(fieldName string, fields map[string]interface{}) (data []string) {
+	if _, exists := fields[fieldName]; exists {
+		data = extractStringArray(fields[fieldName].([]interface{}))
+	}
+	return
+}
+
+func getFieldString(fieldName string, fields map[string]interface{}) (data string) {
+	if _, exists := fields[fieldName]; exists {
+		data = getStringOrNil(fields[fieldName].(string))
+	}
+	return
+}
+
+func getFieldBool(fieldName string, fields map[string]interface{}) (data bool) {
+	if _, exists := fields[fieldName]; exists {
+		data = GetTrueOrFalse(fields[fieldName].(bool))
+	}
+	return
+}
+
+func getFieldUint16(fieldName string, fields map[string]interface{}) (data uint16) {
+	if _, exists := fields[fieldName]; exists {
+		data = getUint16OrNil(fields[fieldName].(uint16))
+	}
+	return
+}
+
+func getFieldInt(fieldName string, fields map[string]interface{}) (data int) {
+	if _, exists := fields[fieldName]; exists {
+		data = getIntOrNil(fields[fieldName].(int))
+	}
+	return
 }
 
 func getStringOrNil(input interface{}) string {
@@ -257,6 +292,17 @@ func getUint16OrNil(input interface{}) uint16 {
 	switch input.(type) {
 	case uint16:
 		returnVal = input.(uint16)
+	}
+
+	return returnVal
+}
+
+func getIntOrNil(input interface{}) int {
+	var returnVal int
+
+	switch input.(type) {
+	case int:
+		returnVal = input.(int)
 	}
 
 	return returnVal
@@ -314,4 +360,50 @@ func FindObject(sourceArray []interface{}, fieldName string, compareData interfa
 	}
 
 	return OBJECT_NOT_FOUND
+}
+
+func FindObjectByStringRegex(sourceArray []interface{}, fieldName string, regex string) (index int, err error) {
+
+	if len(sourceArray) == 0 {
+		err = fmt.Errorf("Source array is empty. object not found")
+		return
+	}
+
+	//
+	// Get the specified field name of the first struct
+	//
+	s := reflect.ValueOf(sourceArray[0]).FieldByName(fieldName)
+
+	// Make sure the requested field name exists in the struct
+	if s.Kind() == reflect.Invalid {
+		err = fmt.Errorf("Field name specified does not exist within the provided array of structs")
+		return
+	}
+
+	// Make sure the compareData type matches that the field specified by fieldName
+	if s.Type().Kind() != reflect.String {
+		err = fmt.Errorf("Type of field name '%s' must be string", fieldName)
+		return
+	}
+
+	r, err := regexp.Compile(regex)
+	if err != nil {
+		err = fmt.Errorf("Could not compilex regex for '%s', err='%s'", regex, err.Error())
+		return
+	}
+
+	//
+	// Walk the array and see if we can find a matching object
+	//
+	for fieldIndex, _ := range sourceArray {
+		s = reflect.ValueOf(sourceArray[fieldIndex]).FieldByName(fieldName)
+
+		if r.Match([]byte(s.String())) {
+			index = fieldIndex
+			return
+		}
+	}
+
+	index = OBJECT_NOT_FOUND
+	return
 }
