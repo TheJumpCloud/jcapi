@@ -388,7 +388,7 @@ func FindObjectByStringRegex(sourceArray []interface{}, fieldName string, regex 
 
 	r, err := regexp.Compile(regex)
 	if err != nil {
-		err = fmt.Errorf("Could not compilex regex for '%s', err='%s'", regex, err.Error())
+		err = fmt.Errorf("Could not compile regex for '%s', err='%s'", regex, err.Error())
 		return
 	}
 
