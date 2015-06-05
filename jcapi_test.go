@@ -227,7 +227,7 @@ func TestTags(t *testing.T) {
 		t.Fatalf("Could not add new tag ('%s'), err='%s'", newTag.ToString(), err)
 	}
 
-	t.Logf("Returned tagId=%d", tagId)
+	t.Logf("Returned tagId=%s", tagId)
 
 	allTags, err := jcapi.GetAllTags()
 	if err != nil {
@@ -498,12 +498,17 @@ func TestRadiusServer(t *testing.T) {
 		t.Fatalf("Could not get all the RADIUS servers, err='%s'", err.Error())
 	}
 
-	if radservers[0].ToString() != rs1.ToString() {
-		t.Fatalf("Systems[0]='%s' - rs1='%s' - string compare failed", radservers[0].ToString(), rs1.ToString())
-	}
-
-	if radservers[1].ToString() != rs3.ToString() {
-		t.Fatalf("Systems[1]='%s' - rs3='%s' - string compare failed", radservers[1].ToString(), rs3.ToString())
+	for _, radServer := range radservers {
+		switch radServer.Id {
+		case rs1.Id:
+			if radServer.ToString() != rs1.ToString() {
+				t.Fatalf("radServer='%s' - rs1='%s' - string compare failed", radServer.ToString(), rs1.ToString())
+			}
+		case rs3.Id:
+			if radServer.ToString() != rs3.ToString() {
+				t.Fatalf("radServer='%s' - rs3='%s' - string compare failed", radServer.ToString(), rs3.ToString())
+			}
+		}
 	}
 
 	foundRs := FindRadiusServerById(radservers, rs1.Id)
@@ -533,4 +538,101 @@ func TestRadiusServer(t *testing.T) {
 	}
 
 	return
+}
+
+func mockCommand(name, command, commandType, user string) (cmd JCCommand) {
+	cmd = JCCommand{
+		Name:        name,
+		Command:     command,
+		CommandType: commandType,
+		User:        user,
+		LaunchType:  "manual",
+		Schedule:    "immediate",
+		Timeout:     "0", // No timeout
+		ListensTo:   "",
+		Trigger:     "",
+		Sudo:        false,
+		Skip:        0,
+		Limit:       10,
+	}
+
+	return
+}
+
+// Not an ideal test... depends on the existence of at least one system in the database,
+// but without direct DB access, it's not possible to simply add one...
+func TestCommands(t *testing.T) {
+	jc := NewJCAPI(testAPIKey, testUrlBase)
+
+	c := mockCommand("AAA test command", "/bin/echo \"hello\"", "linux", "000000000000000000000000")
+
+	// Get a Linux system to attach to the command, it requires at least one...
+	systems, err := jc.GetSystems(false)
+	if err != nil {
+		t.Fatalf("Could not get a list of all systems, err='%s'")
+	}
+
+	// Find the first Linux host available (doesn't matter what it is)...
+	systemIndex, err := FindObjectByStringRegex(GetInterfaceArrayFromJCSystems(systems), "Os", "CentOS|Ubuntu|Amazon|Debian")
+	if err != nil {
+		t.Fatalf("Could search a list of systems for OS type, err='%s'", err.Error())
+	}
+
+	if systemIndex >= 0 {
+		c.Systems = append(c.Systems, systems[systemIndex].Id)
+	} else {
+		t.Skip("No applicable systems to test with, skipping this test")
+	}
+
+	id, err := jc.AddUpdateCommand(Insert, c)
+	if err != nil {
+		t.Fatalf("Could not insert a new command, err='%s'", err.Error())
+	}
+
+	if id == "" {
+		t.Fatalf("Didn't get back an ID from AddUpdateCommand!")
+	}
+
+	c.Id = id
+
+	t.Logf("Returned ID value is '%s'", c.Id)
+
+	commandList, err := jc.GetAllCommands()
+	if err != nil {
+		t.Fatalf("Could not get all commands, err='%s'", err.Error())
+	}
+
+	for idx, cmd := range commandList {
+		t.Logf("Command %d='%s'", idx, cmd.ToString())
+	}
+
+	foundCommand, index := FindCommandById(commandList, c.Id)
+	if foundCommand == nil {
+		t.Fatalf("FindCommandByID() returned no matching command for id='%s', index=%d", c.Id, index)
+	}
+
+	if foundCommand.Id != c.Id {
+		t.Fatalf("FindCommandById() returned '%s', but was expecting '%s'", foundCommand.ToString(), c.ToString())
+	}
+
+	err = jc.RunCommand(c)
+	if err != nil {
+		t.Fatalf("RunCommand() failed on '%s', err='%s'", c.ToString(), err)
+	}
+
+	err = jc.DeleteCommand(c)
+	if err != nil {
+		t.Fatalf("Could not delete command '%s', err='%s'", c.ToString(), err.Error())
+	}
+
+	commandList, err = jc.GetAllCommands()
+	if err != nil {
+		t.Fatalf("Could not get all commands, err='%s'", err.Error())
+	}
+
+	for _, cmd := range commandList {
+		if cmd.Id == c.Id {
+			t.Fatalf("DeleteCommand failed to delete '%s', it's still in the system, found at '%s'", c.ToString(), cmd.ToString())
+		}
+	}
 }

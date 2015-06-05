@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"reflect"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -186,6 +187,38 @@ func (jc JCAPI) Do(op, url string, data []byte) (interface{}, JCError) {
 	return returnVal, err
 }
 
+func (jc JCAPI) DoBytes(op, url string, data []byte) ([]byte, JCError) {
+
+	fullUrl := jc.UrlBase + url
+
+	client := &http.Client{}
+
+	req, err := http.NewRequest(op, fullUrl, bytes.NewReader(data))
+	if err != nil {
+		return nil, fmt.Errorf("ERROR: Could not build search request: '%s'", err)
+	}
+
+	jc.setHeader(req)
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("ERROR: client.Do() failed, err='%s'", err)
+	}
+
+	defer resp.Body.Close()
+
+	if resp.Status != "200 OK" {
+		return nil, fmt.Errorf("JumpCloud HTTP response status='%s'", resp.Status)
+	}
+
+	buffer, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("ERROR: Could not read the response body, err='%s'", err)
+	}
+
+	return buffer, err
+}
+
 // Add all the tags of which the user is a part to the JCUser object
 func (user *JCUser) AddJCTags(tags []JCTag) {
 	for _, tag := range tags {
@@ -230,7 +263,7 @@ func MapJCOpToHTTP(op JCOp) string {
 //
 // Interface Conversion Helper Functions
 //
-func (jc JCAPI) extractStringArray(input []interface{}) []string {
+func extractStringArray(input []interface{}) []string {
 	var returnVal []string
 
 	for _, str := range input {
@@ -240,26 +273,31 @@ func (jc JCAPI) extractStringArray(input []interface{}) []string {
 	return returnVal
 }
 
-func getStringOrNil(input interface{}) string {
-	returnVal := ""
-
+func getStringOrNil(input interface{}) (s string) {
 	switch input.(type) {
 	case string:
-		returnVal = input.(string)
+		s = input.(string)
 	}
 
-	return returnVal
+	return
 }
 
-func getUint16OrNil(input interface{}) uint16 {
-	var returnVal uint16
-
+func getUint16OrNil(input interface{}) (i uint16) {
 	switch input.(type) {
 	case uint16:
-		returnVal = input.(uint16)
+		i = input.(uint16)
 	}
 
-	return returnVal
+	return
+}
+
+func getIntOrNil(input interface{}) (i int) {
+	switch input.(type) {
+	case int:
+		i = input.(int)
+	}
+
+	return
 }
 
 func GetTrueOrFalse(input interface{}) bool {
@@ -314,4 +352,62 @@ func FindObject(sourceArray []interface{}, fieldName string, compareData interfa
 	}
 
 	return OBJECT_NOT_FOUND
+}
+
+func FindObjectByStringRegex(sourceArray []interface{}, fieldName string, regex string) (index int, err error) {
+
+	if len(sourceArray) == 0 {
+		err = fmt.Errorf("Source array is empty. object not found")
+		return
+	}
+
+	//
+	// Get the specified field name of the first struct
+	//
+	s := reflect.ValueOf(sourceArray[0]).FieldByName(fieldName)
+
+	// Make sure the requested field name exists in the struct
+	if s.Kind() == reflect.Invalid {
+		err = fmt.Errorf("Field name specified does not exist within the provided array of structs")
+		return
+	}
+
+	// Make sure the compareData type matches that the field specified by fieldName
+	if s.Type().Kind() != reflect.String {
+		err = fmt.Errorf("Type of field name '%s' must be string", fieldName)
+		return
+	}
+
+	r, err := regexp.Compile(regex)
+	if err != nil {
+		err = fmt.Errorf("Could not compile regex for '%s', err='%s'", regex, err.Error())
+		return
+	}
+
+	//
+	// Walk the array and see if we can find a matching object
+	//
+	for fieldIndex, _ := range sourceArray {
+		s = reflect.ValueOf(sourceArray[fieldIndex]).FieldByName(fieldName)
+
+		// Make sure the requested field name exists in the struct
+		if s.Kind() == reflect.Invalid {
+			err = fmt.Errorf("Field name specified does not exist within the object at array index %d", fieldIndex)
+			return
+		}
+
+		// Make sure the compareData type matches that the field specified by fieldName
+		if s.Type().Kind() != reflect.String {
+			err = fmt.Errorf("Type of field name '%s' in object at array index %d must be string", fieldName, fieldIndex)
+			return
+		}
+
+		if r.Match([]byte(s.String())) {
+			index = fieldIndex
+			return
+		}
+	}
+
+	index = OBJECT_NOT_FOUND
+	return
 }
