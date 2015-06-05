@@ -42,58 +42,26 @@ func (e JCCommand) ToString() string {
 	return fmt.Sprintf("command: %v", e)
 }
 
-// Necessary because json.Unmarshal() can't recognize the JCCommand struct as matching
-// the return result.
-func getJCCommandFieldsFromInterface(fields map[string]interface{}, e *JCCommand) {
-	e.Id = getFieldString("_id", fields)
-	e.Name = getFieldString("name", fields)
+func getJCCommandsFromResults(result []byte) (commands []JCCommand, err JCError) {
+	commandResults := JCCommandResults{}
 
-	e.Command = getFieldString("command", fields)
-	e.CommandRunners = getFieldStringArray("commandRunners", fields)
-	e.CommandType = getFieldString("commandType", fields)
+	err = json.Unmarshal(result, &commandResults)
+	if err != nil {
+		err = fmt.Errorf("Could not unmarshal result '%s', err='%s'", string(result), err.Error())
+	}
 
-	e.User = getFieldString("user", fields)
-
-	e.Files = getFieldStringArray("files", fields)
-	e.Systems = getFieldStringArray("systems", fields)
-	e.Tags = getFieldStringArray("tags", fields)
-
-	e.LaunchType = getFieldString("launchType", fields)
-	e.ListensTo = getFieldString("listensTo", fields)
-	e.Schedule = getFieldString("schedule", fields)
-	e.Trigger = getFieldString("trigger", fields)
-	e.Timeout = getFieldString("timeout", fields)
-	e.Organization = getFieldString("organization", fields)
-	e.Sudo = getFieldBool("sudo", fields)
-
-	e.Skip = getFieldInt("skip", fields)
-	e.Limit = getFieldInt("limit", fields)
+	commands = commandResults.Results
 
 	return
 }
 
-func getJCCommandResultsFromInterface(result interface{}) []JCCommand {
-
-	var returnVal []JCCommand
-
-	recMap := result.(map[string]interface{})
-
-	results := recMap["results"].([]interface{})
-
-	returnVal = make([]JCCommand, len(results), len(results))
-
-	for idx, result := range results {
-		getJCCommandFieldsFromInterface(result.(map[string]interface{}), &returnVal[idx])
-	}
-
-	return returnVal
-}
-
 func (jc JCAPI) GetAllCommands() (commandList []JCCommand, err JCError) {
+	var empty []byte
+
 	for skip := 0; skip == 0 || len(commandList) == searchLimit; skip += searchSkipInterval {
 		url := fmt.Sprintf("%s?sort=hostname&skip=%d&limit=%d", COMMAND_PATH, skip, searchLimit)
 
-		jcSysRec, err2 := jc.Get(url)
+		jcSysRec, err2 := jc.DoBytes(MapJCOpToHTTP(Read), url, empty)
 
 		if err2 != nil {
 			return nil, fmt.Errorf("ERROR: Get commands to JumpCloud failed, err='%s'", err2)
@@ -103,13 +71,18 @@ func (jc JCAPI) GetAllCommands() (commandList []JCCommand, err JCError) {
 			return nil, fmt.Errorf("ERROR: No commands found")
 		}
 
-		resultsBlock := getJCCommandResultsFromInterface(jcSysRec)
+		resultsBlock, err2 := getJCCommandsFromResults(jcSysRec)
+		if err2 != nil {
+			err = fmt.Errorf("Could not get resultsBlock data, err='%s'", err2.Error())
+			return
+		}
 
 		for i, _ := range resultsBlock {
 			if resultsBlock[i].Id != "" {
 				commandList = append(commandList, resultsBlock[i])
 			}
 		}
+
 	}
 
 	return
@@ -154,14 +127,17 @@ func (jc JCAPI) HandleCommand(path string, op JCOp, command JCCommand) (id strin
 		url += "/" + command.Id
 	}
 
-	result, err := jc.Do(MapJCOpToHTTP(op), url, data)
+	result, err := jc.DoBytes(MapJCOpToHTTP(op), url, data)
 	if err != nil {
 		return "", fmt.Errorf("ERROR: Could not '%s' new JCCommand object, err='%s'", MapJCOpToHTTP(op), err.Error())
 	}
 
 	commandResult := JCCommand{}
 
-	getJCCommandFieldsFromInterface(result.(map[string]interface{}), &commandResult)
+	err = json.Unmarshal(result, &commandResult)
+	if err != nil {
+		return "", fmt.Errorf("ERROR: Could not unmarshal result '%s', err='%s'", string(result), err.Error())
+	}
 
 	return commandResult.Id, nil
 }

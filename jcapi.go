@@ -187,6 +187,38 @@ func (jc JCAPI) Do(op, url string, data []byte) (interface{}, JCError) {
 	return returnVal, err
 }
 
+func (jc JCAPI) DoBytes(op, url string, data []byte) ([]byte, JCError) {
+
+	fullUrl := jc.UrlBase + url
+
+	client := &http.Client{}
+
+	req, err := http.NewRequest(op, fullUrl, bytes.NewReader(data))
+	if err != nil {
+		return nil, fmt.Errorf("ERROR: Could not build search request: '%s'", err)
+	}
+
+	jc.setHeader(req)
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("ERROR: client.Do() failed, err='%s'", err)
+	}
+
+	defer resp.Body.Close()
+
+	if resp.Status != "200 OK" {
+		return nil, fmt.Errorf("JumpCloud HTTP response status='%s'", resp.Status)
+	}
+
+	buffer, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("ERROR: Could not read the response body, err='%s'", err)
+	}
+
+	return buffer, err
+}
+
 // Add all the tags of which the user is a part to the JCUser object
 func (user *JCUser) AddJCTags(tags []JCTag) {
 	for _, tag := range tags {
@@ -239,40 +271,6 @@ func extractStringArray(input []interface{}) []string {
 	}
 
 	return returnVal
-}
-func getFieldStringArray(fieldName string, fields map[string]interface{}) (data []string) {
-	if _, exists := fields[fieldName]; exists {
-		data = extractStringArray(fields[fieldName].([]interface{}))
-	}
-	return
-}
-
-func getFieldString(fieldName string, fields map[string]interface{}) (data string) {
-	if _, exists := fields[fieldName]; exists {
-		data = getStringOrNil(fields[fieldName].(string))
-	}
-	return
-}
-
-func getFieldBool(fieldName string, fields map[string]interface{}) (data bool) {
-	if _, exists := fields[fieldName]; exists {
-		data = GetTrueOrFalse(fields[fieldName].(bool))
-	}
-	return
-}
-
-func getFieldUint16(fieldName string, fields map[string]interface{}) (data uint16) {
-	if _, exists := fields[fieldName]; exists {
-		data = getUint16OrNil(fields[fieldName].(uint16))
-	}
-	return
-}
-
-func getFieldInt(fieldName string, fields map[string]interface{}) (data int) {
-	if _, exists := fields[fieldName]; exists {
-		data = getIntOrNil(fields[fieldName].(int))
-	}
-	return
 }
 
 func getStringOrNil(input interface{}) (s string) {
@@ -391,6 +389,18 @@ func FindObjectByStringRegex(sourceArray []interface{}, fieldName string, regex 
 	//
 	for fieldIndex, _ := range sourceArray {
 		s = reflect.ValueOf(sourceArray[fieldIndex]).FieldByName(fieldName)
+
+		// Make sure the requested field name exists in the struct
+		if s.Kind() == reflect.Invalid {
+			err = fmt.Errorf("Field name specified does not exist within the object at array index %d", fieldIndex)
+			return
+		}
+
+		// Make sure the compareData type matches that the field specified by fieldName
+		if s.Type().Kind() != reflect.String {
+			err = fmt.Errorf("Type of field name '%s' in object at array index %d must be string", fieldName, fieldIndex)
+			return
+		}
 
 		if r.Match([]byte(s.String())) {
 			index = fieldIndex

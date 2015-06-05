@@ -227,7 +227,7 @@ func TestTags(t *testing.T) {
 		t.Fatalf("Could not add new tag ('%s'), err='%s'", newTag.ToString(), err)
 	}
 
-	t.Logf("Returned tagId=%d", tagId)
+	t.Logf("Returned tagId=%s", tagId)
 
 	allTags, err := jcapi.GetAllTags()
 	if err != nil {
