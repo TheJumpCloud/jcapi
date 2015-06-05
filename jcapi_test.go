@@ -133,7 +133,7 @@ func TestSystemUsersByOne(t *testing.T) {
 
 	retrievedUser.Email = "newtestemail@jumpcloud.com"
 
-	// We have to do the following because of bug: https://www.pivotaltracker.com/story/show/84876992
+	// We have to do the following because of defect #96322248
 	retrievedUser.Uid = "2244"
 	retrievedUser.Gid = "2244"
 
@@ -192,7 +192,7 @@ func TestSystemUsers(t *testing.T) {
 
 	allUsers[foundUser].Email = "newtestemail@jumpcloud.com"
 
-	// We have to do the following because of bug: https://www.pivotaltracker.com/story/show/84876992
+	// We have to do the following because of defect #96322248
 	allUsers[foundUser].Uid = "2244"
 	allUsers[foundUser].Gid = "2244"
 
