@@ -154,6 +154,8 @@ func (jc JCAPI) AddUpdateTag(op JCOp, tag JCTag) (tagId string, err JCError) {
 
 	if len(tagList) > 0 {
 		resultTag = tagList[0]
+	} else {
+		return "", fmt.Errorf("ERROR: Got no result back from JumpCloud, cannot return object ID")
 	}
 
 	if resultTag.Name != tag.Name {
