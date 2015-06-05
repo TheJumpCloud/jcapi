@@ -32,9 +32,11 @@ func MakeTestUser() (user JCUser) {
 	return
 }
 
-// TODO: This test requires attention, it depends on conditions that it doesn't
-// create...
-func testSystems(t *testing.T) {
+//
+// Note: This test requires at least one system to be installed on the
+// JumpCloud account referenced by the API key.
+//
+func TestSystems(t *testing.T) {
 	jcapi := NewJCAPI(testAPIKey, testUrlBase)
 
 	systems, err := jcapi.GetSystems(true)
@@ -45,7 +47,8 @@ func testSystems(t *testing.T) {
 		t.Fatalf("no systems found")
 	}
 
-	//fmt.Printf("'%d' Systems found\n", len(systems))
+	t.Logf("%d Systems found\n", len(systems))
+
 	testSystem := systems[0]
 	sysByID, err := jcapi.GetSystemById(testSystem.Id, true)
 	if testSystem.Id != sysByID.Id {
@@ -76,14 +79,17 @@ func testSystems(t *testing.T) {
 		tagList[i] = tag.Name
 	}
 	testSystem.TagList = tagList
+
 	updatedSystemId, err := jcapi.UpdateSystem(testSystem)
 	if err != nil {
 		t.Fatalf("Couldn't update system, err='%s'", err)
 	}
+
 	updatedSystem, err := jcapi.GetSystemById(updatedSystemId, true)
 	if err != nil {
 		t.Fatalf("error getting system")
 	}
+
 	tagsAfter := updatedSystem.Tags
 	if len(tagsAfter) < len(allTags) {
 		t.Fatalf("not enough tags!")
@@ -102,9 +108,10 @@ func testSystems(t *testing.T) {
 	if err != nil {
 		t.Fatalf("error getting system")
 	}
-	//TODO complare Tags contents
+
+	// TODO: compare Tags contents
 	if len(backToNormal.Tags) != len(tagsBefore) {
-		t.Fatalf("tags don't match")
+		t.Fatalf("Tags don't match, backToNormal.Tags=%d - tagsBefore=%d", len(backToNormal.Tags), len(tagsBefore))
 	}
 
 }
