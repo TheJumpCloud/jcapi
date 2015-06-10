@@ -85,8 +85,6 @@ func (jc JCAPI) GetCommandResultsByName(name string) (commandResultList []JCComm
 		urlQuery := fmt.Sprintf("%s?skip=%d&limit=%d&sort=-requestTime&%s%s&%s=%s", COMMAND_RESULTS_PATH, skip, searchLimit,
 			url.QueryEscape(searchString1), searchString2, url.QueryEscape(searchString3), name)
 
-		fmt.Printf("urlQuery='%s'\n", urlQuery)
-
 		buffer, err2 := jc.DoBytes(MapJCOpToHTTP(Read), urlQuery, []byte{})
 		if err2 != nil {
 			return nil, fmt.Errorf("ERROR: Get CommandResults to JumpCloud failed, err='%s'", err2)
