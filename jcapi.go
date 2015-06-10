@@ -33,8 +33,8 @@ type JCAPI struct {
 }
 
 const (
-	searchLimit        int = 1000
-	searchSkipInterval int = 1000
+	searchLimit        int = 100
+	searchSkipInterval int = 100
 )
 
 const (
@@ -149,6 +149,11 @@ func (jc JCAPI) List(url string) (interface{}, JCError) {
 	return jc.Do(MapJCOpToHTTP(List), url, nil)
 }
 
+//
+// DEPRECATED: This version of Do() will be replaced by the code in DoBytes()
+// in the future, when the jcapi-systemuser issue is corrected to allow for marshalling
+// and unmarshalling using the same object.
+//
 func (jc JCAPI) Do(op, url string, data []byte) (interface{}, JCError) {
 	var returnVal interface{}
 
@@ -187,9 +192,9 @@ func (jc JCAPI) Do(op, url string, data []byte) (interface{}, JCError) {
 	return returnVal, err
 }
 
-func (jc JCAPI) DoBytes(op, url string, data []byte) ([]byte, JCError) {
+func (jc JCAPI) DoBytes(op, urlQuery string, data []byte) ([]byte, JCError) {
 
-	fullUrl := jc.UrlBase + url
+	fullUrl := jc.UrlBase + urlQuery
 
 	client := &http.Client{}
 

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"testing"
+	"time"
 )
 
 const (
@@ -571,7 +572,7 @@ func mockCommand(name, command, commandType, user string) (cmd JCCommand) {
 func TestCommands(t *testing.T) {
 	jc := NewJCAPI(testAPIKey, testUrlBase)
 
-	c := mockCommand("AAA test command", "/bin/echo \"hello\"", "linux", "000000000000000000000000")
+	c := mockCommand("AAA test command", "/bin/echo \"hello\"", "linux", COMMAND_ROOT_USER)
 
 	// Get a Linux system to attach to the command, it requires at least one...
 	systems, err := jc.GetSystems(false)
@@ -591,16 +592,10 @@ func TestCommands(t *testing.T) {
 		t.Skip("No applicable systems to test with, skipping this test")
 	}
 
-	id, err := jc.AddUpdateCommand(Insert, c)
+	c, err = jc.AddUpdateCommand(Insert, c)
 	if err != nil {
 		t.Fatalf("Could not insert a new command, err='%s'", err.Error())
 	}
-
-	if id == "" {
-		t.Fatalf("Didn't get back an ID from AddUpdateCommand!")
-	}
-
-	c.Id = id
 
 	t.Logf("Returned ID value is '%s'", c.Id)
 
@@ -640,6 +635,95 @@ func TestCommands(t *testing.T) {
 	for _, cmd := range commandList {
 		if cmd.Id == c.Id {
 			t.Fatalf("DeleteCommand failed to delete '%s', it's still in the system, found at '%s'", c.ToString(), cmd.ToString())
+		}
+	}
+}
+
+//
+// NOTE: This test is dependent upon a Linux system being up and running in your account
+// that can execute a command.
+//
+// This command can vary widely in its run time, from 5 seconds up to 60 seconds, just
+// depends on how long it takes for the agent to pick up and execute the command.
+//
+func TestCommandResults(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping test in short mode.")
+	}
+
+	jc := NewJCAPI(testAPIKey, testUrlBase)
+
+	commandName := "AAAcommand"
+
+	c := mockCommand(commandName, "/bin/echo \"hello\"", "linux", COMMAND_ROOT_USER)
+
+	// Get a Linux system to attach to the command, it requires at least one...
+	systems, err := jc.GetSystems(false)
+	if err != nil {
+		t.Fatalf("Could not get a list of all systems, err='%s'")
+	}
+
+	// Find the first Linux host available (doesn't matter what it is)...
+	systemIndex, err := FindObjectByStringRegex(GetInterfaceArrayFromJCSystems(systems), "Os", "CentOS|Ubuntu|Amazon|Debian")
+	if err != nil {
+		t.Fatalf("Could search a list of systems for OS type, err='%s'", err.Error())
+	}
+
+	if systemIndex >= 0 {
+		c.Systems = append(c.Systems, systems[systemIndex].Id)
+	} else {
+		t.Skip("No applicable systems to test with, skipping this test")
+	}
+
+	t.Logf("Found system: %s", systems[systemIndex].ToString())
+
+	c, err = jc.AddUpdateCommand(Insert, c)
+	if err != nil {
+		t.Fatalf("Could not insert a new command, err='%s'", err.Error())
+	}
+
+	// Run the command so we can search for the result...
+	err = jc.RunCommand(c)
+	if err != nil {
+		t.Fatalf("RunCommand() failed on '%s', err='%s'", c.ToString(), err.Error())
+	}
+	defer jc.DeleteCommand(c)
+
+	// Poll for up to 60 seconds for the command to actually run...
+	pollTime := 5
+	results := []JCCommandResult{}
+
+	for i := 0; i < 60; i += pollTime {
+
+		time.Sleep(time.Duration(pollTime) * time.Second)
+
+		results, err = jc.GetCommandResultsByName(commandName)
+		if err != nil {
+			t.Fatalf("Could not find the command result for '%s', err='%s'", commandName, err.Error())
+		}
+
+		if len(results) > 0 {
+			break
+		}
+	}
+
+	if len(results) == 0 {
+		t.Fatalf("Could not find the command result for '%s', is '%s' up and running the agent?", commandName, systems[systemIndex].Hostname)
+	}
+
+	for idx, result := range results {
+		resultDetail, err := jc.GetCommandResultDetailsById(result.Id)
+		if err != nil {
+			t.Fatalf("Could not get command result details by ID '%s'", result.Id)
+		}
+
+		t.Logf("Command result %d output='%s' - exit code %d", idx, resultDetail.Response.Data.Output, resultDetail.Response.Data.ExitCode)
+	}
+
+	for _, result := range results {
+		err = jc.DeleteCommandResult(result.Id)
+		if err != nil {
+			t.Fatalf("Could not delete command result ID '%s', err='%s'", result.Id)
 		}
 	}
 }

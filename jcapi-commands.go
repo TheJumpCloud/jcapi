@@ -8,6 +8,8 @@ import (
 const (
 	COMMAND_PATH     string = "/commands"
 	RUN_COMMAND_PATH string = "/runCommand"
+
+	COMMAND_ROOT_USER string = "000000000000000000000000"
 )
 
 type JCCommandResults struct {
@@ -110,16 +112,22 @@ func GetInterfaceArrayFromJCCommand(commands []JCCommand) (interfaceArray []inte
 //
 // Add or Update a command in place on JumpCloud
 //
-func (jc JCAPI) AddUpdateCommand(op JCOp, command JCCommand) (id string, err JCError) {
-	id, err = jc.HandleCommand(COMMAND_PATH, op, command)
+// AddUpdateCommand returns an entire struct, so that the workflow ID can
+// be obtained for running commands. This is a departure from other AddUpdate*()
+// functions in this API, which generally just return the ID, because that is sufficient
+// for most use cases.
+//
+func (jc JCAPI) AddUpdateCommand(op JCOp, command JCCommand) (commandResult JCCommand, err JCError) {
+	commandResult, err = jc.HandleCommand(COMMAND_PATH, op, command)
 
 	return
 }
 
-func (jc JCAPI) HandleCommand(path string, op JCOp, command JCCommand) (id string, err JCError) {
+func (jc JCAPI) HandleCommand(path string, op JCOp, command JCCommand) (commandResult JCCommand, err JCError) {
 	data, err := json.Marshal(command)
 	if err != nil {
-		return "", fmt.Errorf("ERROR: Could not marshal JCCommand object, err='%s'", err.Error())
+		err = fmt.Errorf("ERROR: Could not marshal JCCommand object, err='%s'", err.Error())
+		return
 	}
 
 	url := path
@@ -129,17 +137,19 @@ func (jc JCAPI) HandleCommand(path string, op JCOp, command JCCommand) (id strin
 
 	result, err := jc.DoBytes(MapJCOpToHTTP(op), url, data)
 	if err != nil {
-		return "", fmt.Errorf("ERROR: Could not '%s' new JCCommand object, err='%s'", MapJCOpToHTTP(op), err.Error())
+		err = fmt.Errorf("ERROR: Could not '%s' new JCCommand object, err='%s'", MapJCOpToHTTP(op), err.Error())
+		return
 	}
 
-	commandResult := JCCommand{}
+	commandResult = JCCommand{}
 
 	err = json.Unmarshal(result, &commandResult)
 	if err != nil {
-		return "", fmt.Errorf("ERROR: Could not unmarshal result '%s', err='%s'", string(result), err.Error())
+		err = fmt.Errorf("ERROR: Could not unmarshal result '%s', err='%s'", string(result), err.Error())
+		return
 	}
 
-	return commandResult.Id, nil
+	return
 }
 
 func (jc JCAPI) DeleteCommand(command JCCommand) JCError {
