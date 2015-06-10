@@ -92,9 +92,7 @@ func (jc JCAPI) GetTagsByUrl(urlPath string) (tagList []JCTag, err JCError) {
 
 func (jc JCAPI) GetAllTags() (tagList []JCTag, err JCError) {
 
-	var returnVal []JCTag
-
-	for skip := 0; skip == 0 || len(returnVal) == searchLimit; skip += searchSkipInterval {
+	for skip := 0; skip == 0 || len(tagList) == searchLimit; skip += searchSkipInterval {
 		url := fmt.Sprintf("%s?sort=username&skip=%d&limit=%d", TAGS_PATH, skip, searchLimit)
 
 		tags, err := jc.GetTagsByUrl(url)
