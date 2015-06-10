@@ -93,12 +93,15 @@ func getJCUserFieldsFromInterface(fields map[string]interface{}, user *JCUser) {
 		user.ExternalSourceType = fields["external_source_type"].(string)
 	}
 
+	// Currently returned as int, not string (though they are posted as string),
+	// defect #96322248...
 	if _, exists := fields["unix_uid"]; exists {
 		user.Uid = getStringOrNil(fields["unix_uid"])
 	}
 	if _, exists := fields["unix_gid"]; exists {
 		user.Gid = getStringOrNil(fields["unix_gid"])
 	}
+
 	if _, exists := fields["enable_managed_uid"]; exists {
 		user.EnableManagedUid = fields["enable_managed_uid"].(bool)
 	}

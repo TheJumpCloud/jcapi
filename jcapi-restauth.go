@@ -2,9 +2,13 @@ package jcapi
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"net/http"
-	"strings"
+)
+
+const (
+	AUTHENTICATE_PATH string = "/authenticate"
 )
 
 type JCRestAuth struct {
@@ -18,18 +22,6 @@ func (e JCRestAuth) ToString() string {
 		e.Username, e.Tag)
 }
 
-func (e JCRestAuth) marshalJSON() (jsonData []byte) {
-	var builder []string
-
-	builder = append(builder, buildJSONKeyValuePair("username", e.Username))
-	builder = append(builder, buildJSONKeyValuePair("password", e.Password))
-	builder = append(builder, buildJSONKeyValuePair("tag", e.Tag))
-
-	jsonData = []byte("{" + strings.Join(builder, ",") + "}")
-
-	return
-}
-
 func (jc JCAPI) AuthUser(username, password, tag string) (userAuthenticated bool, err error) {
 	userAuthenticated = false
 
@@ -39,15 +31,16 @@ func (jc JCAPI) AuthUser(username, password, tag string) (userAuthenticated bool
 		Tag:      tag,
 	}
 
-	data := auth.marshalJSON()
-
-	fullUrl := jc.UrlBase + "/authenticate"
+	data, err := json.Marshal(auth)
+	if err != nil {
+		return false, fmt.Errorf("ERROR: Could not marshal the authentication request, err='%s'", err.Error())
+	}
 
 	client := &http.Client{}
 
-	req, err := http.NewRequest("POST", fullUrl, bytes.NewReader(data))
+	req, err := http.NewRequest("POST", jc.UrlBase+AUTHENTICATE_PATH, bytes.NewReader(data))
 	if err != nil {
-		err = fmt.Errorf("ERROR: Could not build POST request: '%s'", err)
+		err = fmt.Errorf("ERROR: Could not build POST request: '%s'", err.Error())
 		return
 	}
 
@@ -55,7 +48,7 @@ func (jc JCAPI) AuthUser(username, password, tag string) (userAuthenticated bool
 
 	resp, err := client.Do(req)
 	if err != nil {
-		err = fmt.Errorf("ERROR: client.Do() failed, err='%s'", err)
+		err = fmt.Errorf("ERROR: client.Do() failed, err='%s'", err.Error())
 		return
 	}
 

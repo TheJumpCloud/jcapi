@@ -5,6 +5,14 @@ import (
 	"fmt"
 )
 
+const (
+	RADIUS_SERVERS_PATH string = "/radiusservers"
+)
+
+type JCRadiusServerResults struct {
+	Results []JCRadiusServer `json:"results"`
+}
+
 type JCRadiusServer struct {
 	Id              string   `json:"_id,omitempty"`
 	Name            string   `json:"name,omitempty"`
@@ -18,51 +26,22 @@ func (e JCRadiusServer) ToString() string {
 		e.Id, e.Name, e.NetworkSourceIP, e.SharedSecret, e.TagList)
 }
 
-func getJCRadiusServerFieldsFromInterface(fields map[string]interface{}, e *JCRadiusServer) {
-	e.Id = fields["_id"].(string)
-
-	e.Name = fields["name"].(string)
-
-	if _, exists := fields["networkSourceIp"]; exists {
-		e.NetworkSourceIP = fields["networkSourceIp"].(string)
-	}
-	if _, exists := fields["sharedSecret"]; exists {
-		e.SharedSecret = fields["sharedSecret"].(string)
-	}
-	if _, exists := fields["tags"]; exists {
-		for i, _ := range fields["tags"].([]interface{}) {
-			e.TagList = append(e.TagList, (fields["tags"].([]interface{}))[i].(string))
-		}
-	}
-}
-
-func getJCRadiusServerFromInterface(radiusServer interface{}) []JCRadiusServer {
-
-	var returnVal []JCRadiusServer
-
-	recMap := radiusServer.(map[string]interface{})
-
-	results := recMap["results"].([]interface{})
-
-	returnVal = make([]JCRadiusServer, len(results))
-
-	for idx, result := range results {
-		getJCRadiusServerFieldsFromInterface(result.(map[string]interface{}), &returnVal[idx])
-	}
-
-	return returnVal
-}
-
 func (jc JCAPI) GetAllRadiusServers() (radiusServers []JCRadiusServer, err JCError) {
-
-	result, err := jc.Get("/radiusservers")
+	result, err := jc.DoBytes(MapJCOpToHTTP(Read), RADIUS_SERVERS_PATH, []byte{})
 	if err != nil {
 		err = fmt.Errorf("ERROR: Could not list RADIUS servers, err='%s'", err)
 		return
 	}
 
-	radiusServers = getJCRadiusServerFromInterface(result)
+	radiusResults := JCRadiusServerResults{}
 
+	err = json.Unmarshal(result, &radiusResults)
+	if err != nil {
+		err = fmt.Errorf("ERROR: Could not unmarshal result buffer '%s', err='%s'", result, err.Error())
+		return
+	}
+
+	radiusServers = radiusResults.Results
 	return
 }
 
@@ -99,13 +78,17 @@ func (jc JCAPI) AddUpdateRadiusServer(op JCOp, radiusServer JCRadiusServer) (id 
 		url += "/" + radiusServer.Id
 	}
 
-	radiusServerRec, err := jc.Do(MapJCOpToHTTP(op), url, data)
+	buffer, err := jc.DoBytes(MapJCOpToHTTP(op), url, data)
 	if err != nil {
 		return "", fmt.Errorf("ERROR: Could not post new JCIDSource object, err='%s'", err)
 	}
 
 	var resultES JCRadiusServer
-	getJCRadiusServerFieldsFromInterface(radiusServerRec.(map[string]interface{}), &resultES)
+
+	err = json.Unmarshal(buffer, &resultES)
+	if err != nil {
+		return "", fmt.Errorf("ERROR: Could not unmarshal buffer '%s', err='%s'", buffer, err.Error())
+	}
 
 	if resultES.Name != radiusServer.Name {
 		return "", fmt.Errorf("ERROR: JumpCloud did not return the same ID source name - this should never happen!")
@@ -115,7 +98,7 @@ func (jc JCAPI) AddUpdateRadiusServer(op JCOp, radiusServer JCRadiusServer) (id 
 }
 
 func (jc JCAPI) DeleteRadiusServer(radiusServer JCRadiusServer) JCError {
-	_, err := jc.Delete(fmt.Sprintf("/radiusservers/%s", radiusServer.Id))
+	_, err := jc.Delete(fmt.Sprintf("%s/%s", RADIUS_SERVERS_PATH, radiusServer.Id))
 	if err != nil {
 		return fmt.Errorf("ERROR: Could not delete ID source ID '%s': err='%s'", radiusServer.Id, err)
 	}

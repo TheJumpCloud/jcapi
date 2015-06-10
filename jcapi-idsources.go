@@ -1,9 +1,18 @@
 package jcapi
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 )
+
+const (
+	IDSOURCES_PATH string = "/idsources"
+)
+
+type JCIDSourceResults struct {
+	Results []JCIDSource `json:"results"`
+}
 
 type JCIDSource struct {
 	Id             string `json:"_id,omitempty"`
@@ -14,40 +23,12 @@ type JCIDSource struct {
 	IpAddress      string `json:ipAddress`
 	LastUpdateTime string `json:lastUpdateTime,omitempty`
 	DN             string `json:dn`
-	Active         bool   `json:active, omitempty`
+	Active         bool   `json:active,omitempty`
 }
 
 func (e JCIDSource) ToString() string {
 	return fmt.Sprintf("idsource: id='%s' - name='%s' - type='%s' - version='%s' - ipAddr='%s' - lastUpdate='%s' - DN='%s' - active='%t'\n",
 		e.Id, e.Name, e.Type, e.Version, e.IpAddress, e.LastUpdateTime, e.DN, e.Active)
-}
-
-func getIDSourceFieldsFromInterface(fields map[string]interface{}, e *JCIDSource) {
-	e.Id = fields["_id"].(string)
-
-	e.Name = fields["name"].(string)
-
-	if _, exists := fields["organization"]; exists {
-		e.Organization = fields["organization"].(string)
-	}
-	if _, exists := fields["type"]; exists {
-		e.Type = fields["type"].(string)
-	}
-	if _, exists := fields["version"]; exists {
-		e.Version = fields["version"].(string)
-	}
-	if _, exists := fields["ipAddress"]; exists {
-		e.IpAddress = fields["ipAddress"].(string)
-	}
-	if _, exists := fields["lastUpdateTime"]; exists {
-		e.LastUpdateTime = fields["lastUpdateTime"].(string)
-	}
-	if _, exists := fields["dn"]; exists {
-		e.DN = fields["dn"].(string)
-	}
-	if _, exists := fields["active"]; exists {
-		e.Active = fields["active"].(bool)
-	}
 }
 
 func (e JCIDSource) marshalJSON(writeActive bool) ([]byte, error) {
@@ -78,51 +59,39 @@ func (e JCIDSource) marshalJSON(writeActive bool) ([]byte, error) {
 	return []byte("{" + strings.Join(builder, ",") + "}"), nil
 }
 
-func getJCIDSourcesFromInterface(idSource interface{}) []JCIDSource {
-
-	var returnVal []JCIDSource
-
-	recMap := idSource.(map[string]interface{})
-
-	results := recMap["results"].([]interface{})
-
-	returnVal = make([]JCIDSource, len(results))
-
-	for idx, result := range results {
-		getIDSourceFieldsFromInterface(result.(map[string]interface{}), &returnVal[idx])
-	}
-
-	return returnVal
-}
-
-func (jc JCAPI) GetAllIDSources() ([]JCIDSource, JCError) {
-	var returnValue []JCIDSource
-
-	result, err := jc.Get("/idsources")
+func (jc JCAPI) GetAllIDSources() (idSources []JCIDSource, err JCError) {
+	result, err := jc.DoBytes(MapJCOpToHTTP(Read), IDSOURCES_PATH, []byte{})
 	if err != nil {
-		return returnValue, fmt.Errorf("ERROR: Could not list ID sources, err='%s'", err)
+		return idSources, fmt.Errorf("ERROR: Could not list ID sources, err='%s'", err)
 	}
 
-	returnValue = getJCIDSourcesFromInterface(result)
+	idSourceResults := JCIDSourceResults{}
 
-	return returnValue, nil
+	err = json.Unmarshal(result, &idSourceResults)
+	if err != nil {
+		err = fmt.Errorf("Could not unmarshal result set, err='%s'", err.Error())
+		return
+	}
+
+	idSources = idSourceResults.Results
+
+	return
 }
 
-func (jc JCAPI) GetIDSourceByName(name string) (JCIDSource, bool, JCError) {
-	var returnValue JCIDSource
-
+func (jc JCAPI) GetIDSourceByName(name string) (idSource JCIDSource, exists bool, err JCError) {
 	e, err := jc.GetAllIDSources()
 	if err != nil {
-		return returnValue, false, fmt.Errorf("ERROR: Could not gather all ID source objects, err='%s'", err)
+		return idSource, false, fmt.Errorf("ERROR: Could not gather all ID source objects, err='%s'", err)
 	}
 
-	for _, returnValue = range e {
-		if returnValue.Name == name {
-			return returnValue, true, nil
+	for _, idSource = range e {
+		if idSource.Name == name {
+			exists = true
+			return
 		}
 	}
 
-	return returnValue, false, nil
+	return
 }
 
 //
@@ -134,18 +103,22 @@ func (jc JCAPI) AddUpdateIDSource(op JCOp, idSource JCIDSource) (string, JCError
 		return "", fmt.Errorf("ERROR: Could not marshal JCIDSource object, err='%s'", err)
 	}
 
-	url := "/idsources"
+	url := IDSOURCES_PATH
 	if op == Update {
 		url += "/" + idSource.Id
 	}
 
-	idSourceRec, err := jc.Do(MapJCOpToHTTP(op), url, data)
+	buffer, err := jc.DoBytes(MapJCOpToHTTP(op), url, data)
 	if err != nil {
 		return "", fmt.Errorf("ERROR: Could not post new JCIDSource object, err='%s'", err)
 	}
 
 	var resultES JCIDSource
-	getIDSourceFieldsFromInterface(idSourceRec.(map[string]interface{}), &resultES)
+
+	err = json.Unmarshal(buffer, &resultES)
+	if err != nil {
+		return "", fmt.Errorf("ERROR: Could not unmarshal result buffer '%s', err='%s'", buffer, err.Error())
+	}
 
 	if resultES.Name != idSource.Name {
 		return "", fmt.Errorf("ERROR: JumpCloud did not return the same ID source name - this should never happen!")
@@ -155,7 +128,7 @@ func (jc JCAPI) AddUpdateIDSource(op JCOp, idSource JCIDSource) (string, JCError
 }
 
 func (jc JCAPI) DeleteIDSource(idSource JCIDSource) JCError {
-	_, err := jc.Delete(fmt.Sprintf("/idsources/%s", idSource.Id))
+	_, err := jc.Delete(fmt.Sprintf("%s/%s", IDSOURCES_PATH, idSource.Id))
 	if err != nil {
 		return fmt.Errorf("ERROR: Could not delete ID source ID '%s': err='%s'", idSource.Id, err)
 	}

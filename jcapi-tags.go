@@ -1,9 +1,18 @@
 package jcapi
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 )
+
+const (
+	TAGS_PATH string = "/tags"
+)
+
+type JCTagResults struct {
+	Results []JCTag `json:"results"`
+}
 
 type JCTag struct {
 	Id                 string   `json:"_id,omitempty"`
@@ -42,84 +51,57 @@ func GetTagNames(tags []JCTag) []string {
 	return returnVal
 }
 
-func (tag *JCTag) MarshalJSON() ([]byte, error) {
+func getJCTagsFromResults(result []byte) (tags []JCTag, err JCError) {
+	tag := JCTag{}
 
-	var builder []string
+	// Try unmarshalling as a single tag first, and if that works, stop there
+	err = json.Unmarshal(result, &tag)
+	if err != nil || tag.Id == "" {
+		err = nil
 
-	if tag.Id != "" {
-		builder = append(builder, buildJSONKeyValuePair("_id", tag.Id))
+		tagResults := JCTagResults{}
+
+		// Nope, must be a results array...
+		err = json.Unmarshal(result, &tagResults)
+		if err != nil {
+			err = fmt.Errorf("Could not unmarshal result '%s', err='%s'", string(result), err.Error())
+		}
+
+		tags = tagResults.Results
+	} else {
+		tags = append(tags, tag)
 	}
 
-	builder = append(builder, buildJSONKeyValuePair("name", tag.Name))
-	builder = append(builder, buildJSONKeyValuePair("groupname", tag.GroupName))
-	builder = append(builder, buildJSONStringArray("systems", tag.Systems))
-	builder = append(builder, buildJSONStringArray("systemusers", tag.SystemUsers))
-	builder = append(builder, buildJSONStringArray("regularExpressions", tag.RegularExpressions))
-	builder = append(builder, buildJSONKeyValuePair("expirationTime", tag.ExpirationTime))
-	builder = append(builder, buildJSONKeyValueBoolPair("expired", tag.Expired))
-	builder = append(builder, buildJSONKeyValueBoolPair("selected", tag.Selected))
-
-	builder = append(builder, buildJSONKeyValueBoolPair("externallyManaged", tag.ExternallyManaged))
-	builder = append(builder, buildJSONKeyValuePair("externalDN", tag.ExternalDN))
-	builder = append(builder, buildJSONKeyValuePair("externalSourceType", tag.ExternalSourceType))
-
-	return []byte("{" + strings.Join(builder, ",") + "}"), nil
+	return
 }
 
-func (jc JCAPI) getTagFieldsFromInterface(tagData map[string]interface{}, tag *JCTag) {
-	tag.Id = tagData["_id"].(string)
-	tag.Name = tagData["name"].(string)
+func (jc JCAPI) GetTagsByUrl(urlPath string) (tagList []JCTag, err JCError) {
 
-	if tagData["groupName"] != nil {
-		tag.GroupName = getStringOrNil(tagData["groupName"].(interface{}))
+	result, err := jc.DoBytes(MapJCOpToHTTP(Read), urlPath, []byte{})
+	if err != nil {
+		return nil, fmt.Errorf("ERROR: Get tags from JumpCloud failed with urlPath='%s', err='%s'", urlPath, err.Error())
 	}
 
-	if tagData["expirationTime"] != nil {
-		tag.ExpirationTime = getStringOrNil(tagData["expirationTime"].(interface{}))
+	tagList, err = getJCTagsFromResults(result)
+	if err != nil {
+		return nil, fmt.Errorf("ERROR: Could not get tags from results, err='%s'", err.Error())
 	}
 
-	if tagData["expired"] != nil {
-		tag.Expired = tagData["expired"].(bool)
-	}
-
-	tag.Systems = jc.extractStringArray(tagData["systems"].([]interface{}))
-	tag.SystemUsers = jc.extractStringArray(tagData["systemusers"].([]interface{}))
-	tag.RegularExpressions = jc.extractStringArray(tagData["regularExpressions"].([]interface{}))
-
-	tag.ExternallyManaged = tagData["externallyManaged"].(bool)
-
-	if tagData["externalDN"] != nil {
-		tag.ExternalDN = getStringOrNil(tagData["externalDN"].(interface{}))
-	}
-
-	if tagData["externalSourceType"] != nil {
-		tag.ExternalSourceType = getStringOrNil(tagData["externalSourceType"].(interface{}))
-	}
+	return
 }
 
 func (jc JCAPI) GetAllTags() (tagList []JCTag, err JCError) {
-	var returnVal []JCTag
 
-	for skip := 0; skip == 0 || len(returnVal) == searchLimit; skip += searchSkipInterval {
-		url := fmt.Sprintf("/tags?sort=username&skip=%d&limit=%d", skip, searchLimit)
+	for skip := 0; skip == 0 || len(tagList) == searchLimit; skip += searchSkipInterval {
+		url := fmt.Sprintf("%s?sort=username&skip=%d&limit=%d", TAGS_PATH, skip, searchLimit)
 
-		result, err := jc.Get(url)
+		tags, err := jc.GetTagsByUrl(url)
 		if err != nil {
-			return nil, fmt.Errorf("ERROR: Get tags from JumpCloud failed, err='%s'", err)
+			return nil, fmt.Errorf("ERROR: Could not query tags, err='%s'", err)
 		}
 
-		recMap := result.(map[string]interface{})
-
-		resultsMap := recMap["results"].([]interface{})
-
-		returnVal := make([]JCTag, len(resultsMap))
-
-		for idx, tagData := range resultsMap {
-			jc.getTagFieldsFromInterface(tagData.(map[string]interface{}), &returnVal[idx])
-		}
-
-		for i, _ := range returnVal {
-			tagList = append(tagList, returnVal[i])
+		for _, tag := range tags {
+			tagList = append(tagList, tag)
 		}
 	}
 
@@ -127,15 +109,16 @@ func (jc JCAPI) GetAllTags() (tagList []JCTag, err JCError) {
 }
 
 func (jc JCAPI) GetTagByName(tagName string) (tag JCTag, err JCError) {
-	url := fmt.Sprintf("/tags/%s", tagName)
+	url := fmt.Sprintf("%s/%s", TAGS_PATH, tagName)
 
-	retVal, err := jc.Get(url)
+	tags, err := jc.GetTagsByUrl(url)
 	if err != nil {
-		err = fmt.Errorf("ERROR: Could not get tag by name/id '%s', err='%s'", tagName, err)
+		err = fmt.Errorf("ERROR: Could not get tags by name for '%s', url='%s', err='%s'", tagName, url, err.Error())
+		return
 	}
 
-	if retVal != nil {
-		jc.getTagFieldsFromInterface(retVal.(map[string]interface{}), &tag)
+	if len(tags) > 0 {
+		tag = tags[0]
 	}
 
 	return
@@ -145,23 +128,33 @@ func (jc JCAPI) GetTagByName(tagName string) (tag JCTag, err JCError) {
 // Add or Update a tag in place on JumpCloud
 //
 func (jc JCAPI) AddUpdateTag(op JCOp, tag JCTag) (tagId string, err JCError) {
-	data, err := tag.MarshalJSON()
+	data, err := json.Marshal(tag)
 	if err != nil {
 		return "", fmt.Errorf("ERROR: Could not marshal JCTag object, err='%s'", err)
 	}
 
-	url := "/tags"
+	url := TAGS_PATH
 	if op == Update {
 		url += "/" + tag.Id
 	}
 
-	jcTagRec, err := jc.Do(MapJCOpToHTTP(op), url, data)
+	result, err := jc.DoBytes(MapJCOpToHTTP(op), url, data)
 	if err != nil {
 		return "", fmt.Errorf("ERROR: Could not post new JCTag object, err='%s'", err)
 	}
 
+	tagList, err := getJCTagsFromResults(result)
+	if err != nil {
+		return "", fmt.Errorf("ERROR: Could not get tags from results, err='%s'", err.Error())
+	}
+
 	var resultTag JCTag
-	jc.getTagFieldsFromInterface(jcTagRec.(map[string]interface{}), &resultTag)
+
+	if len(tagList) > 0 {
+		resultTag = tagList[0]
+	} else {
+		return "", fmt.Errorf("ERROR: Got no result back from JumpCloud, cannot return object ID")
+	}
 
 	if resultTag.Name != tag.Name {
 		return "", fmt.Errorf("ERROR: JumpCloud did not return the same tag name - this should never happen!")
@@ -173,7 +166,7 @@ func (jc JCAPI) AddUpdateTag(op JCOp, tag JCTag) (tagId string, err JCError) {
 }
 
 func (jc JCAPI) DeleteTag(tag JCTag) JCError {
-	_, err := jc.Delete(fmt.Sprintf("/tags/%s", tag.Id))
+	_, err := jc.Delete(fmt.Sprintf("%s/%s", TAGS_PATH, tag.Id))
 	if err != nil {
 		return fmt.Errorf("ERROR: Could not delete tag ID '%s': err='%s'", tag.Id, err)
 	}

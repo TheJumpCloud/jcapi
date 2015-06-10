@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"testing"
+	"time"
 )
 
 const (
@@ -32,9 +33,11 @@ func MakeTestUser() (user JCUser) {
 	return
 }
 
-// TODO: This test requires attention, it depends on conditions that it doesn't
-// create...
-func testSystems(t *testing.T) {
+//
+// Note: This test requires at least one system to be installed on the
+// JumpCloud account referenced by the API key.
+//
+func TestSystems(t *testing.T) {
 	jcapi := NewJCAPI(testAPIKey, testUrlBase)
 
 	systems, err := jcapi.GetSystems(true)
@@ -45,7 +48,8 @@ func testSystems(t *testing.T) {
 		t.Fatalf("no systems found")
 	}
 
-	//fmt.Printf("'%d' Systems found\n", len(systems))
+	t.Logf("%d Systems found\n", len(systems))
+
 	testSystem := systems[0]
 	sysByID, err := jcapi.GetSystemById(testSystem.Id, true)
 	if testSystem.Id != sysByID.Id {
@@ -76,14 +80,17 @@ func testSystems(t *testing.T) {
 		tagList[i] = tag.Name
 	}
 	testSystem.TagList = tagList
+
 	updatedSystemId, err := jcapi.UpdateSystem(testSystem)
 	if err != nil {
 		t.Fatalf("Couldn't update system, err='%s'", err)
 	}
+
 	updatedSystem, err := jcapi.GetSystemById(updatedSystemId, true)
 	if err != nil {
 		t.Fatalf("error getting system")
 	}
+
 	tagsAfter := updatedSystem.Tags
 	if len(tagsAfter) < len(allTags) {
 		t.Fatalf("not enough tags!")
@@ -102,9 +109,10 @@ func testSystems(t *testing.T) {
 	if err != nil {
 		t.Fatalf("error getting system")
 	}
-	//TODO complare Tags contents
+
+	// TODO: compare Tags contents
 	if len(backToNormal.Tags) != len(tagsBefore) {
-		t.Fatalf("tags don't match")
+		t.Fatalf("Tags don't match, backToNormal.Tags=%d - tagsBefore=%d", len(backToNormal.Tags), len(tagsBefore))
 	}
 
 }
@@ -133,7 +141,7 @@ func TestSystemUsersByOne(t *testing.T) {
 
 	retrievedUser.Email = "newtestemail@jumpcloud.com"
 
-	// We have to do the following because of bug: https://www.pivotaltracker.com/story/show/84876992
+	// We have to do the following because of defect #96322248
 	retrievedUser.Uid = "2244"
 	retrievedUser.Gid = "2244"
 
@@ -192,7 +200,7 @@ func TestSystemUsers(t *testing.T) {
 
 	allUsers[foundUser].Email = "newtestemail@jumpcloud.com"
 
-	// We have to do the following because of bug: https://www.pivotaltracker.com/story/show/84876992
+	// We have to do the following because of defect #96322248
 	allUsers[foundUser].Uid = "2244"
 	allUsers[foundUser].Gid = "2244"
 
@@ -227,7 +235,7 @@ func TestTags(t *testing.T) {
 		t.Fatalf("Could not add new tag ('%s'), err='%s'", newTag.ToString(), err)
 	}
 
-	t.Logf("Returned tagId=%d", tagId)
+	t.Logf("Returned tagId=%s", tagId)
 
 	allTags, err := jcapi.GetAllTags()
 	if err != nil {
@@ -498,12 +506,17 @@ func TestRadiusServer(t *testing.T) {
 		t.Fatalf("Could not get all the RADIUS servers, err='%s'", err.Error())
 	}
 
-	if radservers[0].ToString() != rs1.ToString() {
-		t.Fatalf("Systems[0]='%s' - rs1='%s' - string compare failed", radservers[0].ToString(), rs1.ToString())
-	}
-
-	if radservers[1].ToString() != rs3.ToString() {
-		t.Fatalf("Systems[1]='%s' - rs3='%s' - string compare failed", radservers[1].ToString(), rs3.ToString())
+	for _, radServer := range radservers {
+		switch radServer.Id {
+		case rs1.Id:
+			if radServer.ToString() != rs1.ToString() {
+				t.Fatalf("radServer='%s' - rs1='%s' - string compare failed", radServer.ToString(), rs1.ToString())
+			}
+		case rs3.Id:
+			if radServer.ToString() != rs3.ToString() {
+				t.Fatalf("radServer='%s' - rs3='%s' - string compare failed", radServer.ToString(), rs3.ToString())
+			}
+		}
 	}
 
 	foundRs := FindRadiusServerById(radservers, rs1.Id)
@@ -533,4 +546,184 @@ func TestRadiusServer(t *testing.T) {
 	}
 
 	return
+}
+
+func mockCommand(name, command, commandType, user string) (cmd JCCommand) {
+	cmd = JCCommand{
+		Name:        name,
+		Command:     command,
+		CommandType: commandType,
+		User:        user,
+		LaunchType:  "manual",
+		Schedule:    "immediate",
+		Timeout:     "0", // No timeout
+		ListensTo:   "",
+		Trigger:     "",
+		Sudo:        false,
+		Skip:        0,
+		Limit:       10,
+	}
+
+	return
+}
+
+// Not an ideal test... depends on the existence of at least one system in the database,
+// but without direct DB access, it's not possible to simply add one...
+func TestCommands(t *testing.T) {
+	jc := NewJCAPI(testAPIKey, testUrlBase)
+
+	c := mockCommand("AAA test command", "/bin/echo \"hello\"", "linux", COMMAND_ROOT_USER)
+
+	// Get a Linux system to attach to the command, it requires at least one...
+	systems, err := jc.GetSystems(false)
+	if err != nil {
+		t.Fatalf("Could not get a list of all systems, err='%s'")
+	}
+
+	// Find the first Linux host available (doesn't matter what it is)...
+	systemIndex, err := FindObjectByStringRegex(GetInterfaceArrayFromJCSystems(systems), "Os", "CentOS|Ubuntu|Amazon|Debian")
+	if err != nil {
+		t.Fatalf("Could search a list of systems for OS type, err='%s'", err.Error())
+	}
+
+	if systemIndex >= 0 {
+		c.Systems = append(c.Systems, systems[systemIndex].Id)
+	} else {
+		t.Skip("No applicable systems to test with, skipping this test")
+	}
+
+	c, err = jc.AddUpdateCommand(Insert, c)
+	if err != nil {
+		t.Fatalf("Could not insert a new command, err='%s'", err.Error())
+	}
+
+	t.Logf("Returned ID value is '%s'", c.Id)
+
+	commandList, err := jc.GetAllCommands()
+	if err != nil {
+		t.Fatalf("Could not get all commands, err='%s'", err.Error())
+	}
+
+	for idx, cmd := range commandList {
+		t.Logf("Command %d='%s'", idx, cmd.ToString())
+	}
+
+	foundCommand, index := FindCommandById(commandList, c.Id)
+	if foundCommand == nil {
+		t.Fatalf("FindCommandByID() returned no matching command for id='%s', index=%d", c.Id, index)
+	}
+
+	if foundCommand.Id != c.Id {
+		t.Fatalf("FindCommandById() returned '%s', but was expecting '%s'", foundCommand.ToString(), c.ToString())
+	}
+
+	err = jc.RunCommand(c)
+	if err != nil {
+		t.Fatalf("RunCommand() failed on '%s', err='%s'", c.ToString(), err)
+	}
+
+	err = jc.DeleteCommand(c)
+	if err != nil {
+		t.Fatalf("Could not delete command '%s', err='%s'", c.ToString(), err.Error())
+	}
+
+	commandList, err = jc.GetAllCommands()
+	if err != nil {
+		t.Fatalf("Could not get all commands, err='%s'", err.Error())
+	}
+
+	for _, cmd := range commandList {
+		if cmd.Id == c.Id {
+			t.Fatalf("DeleteCommand failed to delete '%s', it's still in the system, found at '%s'", c.ToString(), cmd.ToString())
+		}
+	}
+}
+
+//
+// NOTE: This test is dependent upon a Linux system being up and running in your account
+// that can execute a command.
+//
+// This command can vary widely in its run time, from 5 seconds up to 60 seconds, just
+// depends on how long it takes for the agent to pick up and execute the command.
+//
+func TestCommandResults(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping test in short mode.")
+	}
+
+	jc := NewJCAPI(testAPIKey, testUrlBase)
+
+	commandName := "AAAcommand"
+
+	c := mockCommand(commandName, "/bin/echo \"hello\"", "linux", COMMAND_ROOT_USER)
+
+	// Get a Linux system to attach to the command, it requires at least one...
+	systems, err := jc.GetSystems(false)
+	if err != nil {
+		t.Fatalf("Could not get a list of all systems, err='%s'")
+	}
+
+	// Find the first Linux host available (doesn't matter what it is)...
+	systemIndex, err := FindObjectByStringRegex(GetInterfaceArrayFromJCSystems(systems), "Os", "CentOS|Ubuntu|Amazon|Debian")
+	if err != nil {
+		t.Fatalf("Could search a list of systems for OS type, err='%s'", err.Error())
+	}
+
+	if systemIndex >= 0 {
+		c.Systems = append(c.Systems, systems[systemIndex].Id)
+	} else {
+		t.Skip("No applicable systems to test with, skipping this test")
+	}
+
+	t.Logf("Found system: %s", systems[systemIndex].ToString())
+
+	c, err = jc.AddUpdateCommand(Insert, c)
+	if err != nil {
+		t.Fatalf("Could not insert a new command, err='%s'", err.Error())
+	}
+
+	// Run the command so we can search for the result...
+	err = jc.RunCommand(c)
+	if err != nil {
+		t.Fatalf("RunCommand() failed on '%s', err='%s'", c.ToString(), err.Error())
+	}
+	defer jc.DeleteCommand(c)
+
+	// Poll for up to 60 seconds for the command to actually run...
+	pollTime := 5
+	results := []JCCommandResult{}
+
+	for i := 0; i < 60; i += pollTime {
+
+		time.Sleep(time.Duration(pollTime) * time.Second)
+
+		results, err = jc.GetCommandResultsByName(commandName)
+		if err != nil {
+			t.Fatalf("Could not find the command result for '%s', err='%s'", commandName, err.Error())
+		}
+
+		if len(results) > 0 {
+			break
+		}
+	}
+
+	if len(results) == 0 {
+		t.Fatalf("Could not find the command result for '%s', is '%s' up and running the agent?", commandName, systems[systemIndex].Hostname)
+	}
+
+	for idx, result := range results {
+		resultDetail, err := jc.GetCommandResultDetailsById(result.Id)
+		if err != nil {
+			t.Fatalf("Could not get command result details by ID '%s'", result.Id)
+		}
+
+		t.Logf("Command result %d output='%s' - exit code %d", idx, resultDetail.Response.Data.Output, resultDetail.Response.Data.ExitCode)
+	}
+
+	for _, result := range results {
+		err = jc.DeleteCommandResult(result.Id)
+		if err != nil {
+			t.Fatalf("Could not delete command result ID '%s', err='%s'", result.Id)
+		}
+	}
 }
