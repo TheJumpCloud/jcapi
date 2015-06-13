@@ -22,7 +22,7 @@ type JCCommandResult struct {
 	ResponseTime       string     `json:"responseTime,omitempty"`       // The time the command exited
 	Organization       string     `json:"organization,omitempty"`       // organization ID for this command (auto-populated)
 	Sudo               bool       `json:"sudo"`                         // Indicates whether the command should be run with sudo
-	System             string     `json:"system,omitempty"`             // The name of the system from which this result came
+	System             string     `json:"system,omitempty"`             // The hostname of the system from which this result came
 	WorkflowId         string     `json:"workflowId,omitempty"`         // The ID of the workflow of which this command was a part
 	WorkflowInstanceId string     `json:"workflowInstanceId,omitempty"` // The instance ID of the workflow of which this command was a part
 	Response           JCResponse `json:"response,omitempty"`           // Response data, including command output, and exit code
@@ -83,7 +83,7 @@ func (jc JCAPI) GetCommandResultsByName(name string) (commandResultList []JCComm
 
 	for skip := 0; skip == 0 || len(commandResultList) == searchLimit; skip += searchSkipInterval {
 		urlQuery := fmt.Sprintf("%s?skip=%d&limit=%d&sort=-requestTime&%s%s&%s=%s", COMMAND_RESULTS_PATH, skip, searchLimit,
-			url.QueryEscape(searchString1), searchString2, url.QueryEscape(searchString3), name)
+			url.QueryEscape(searchString1), searchString2, url.QueryEscape(searchString3), url.QueryEscape(name))
 
 		buffer, err2 := jc.DoBytes(MapJCOpToHTTP(Read), urlQuery, []byte{})
 		if err2 != nil {
