@@ -4,7 +4,6 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"os"
 	"regexp"
 	"time"
 
@@ -52,11 +51,16 @@ func deleteCommandResultsByName(jc jcapi.JCAPI, commandName string) (err error) 
 	errBuf := ""
 
 	for _, result := range results {
-		errBuf += jc.DeleteCommandResult(result.Id).Error()
+
+		err = jc.DeleteCommandResult(result.Id)
+		if err != nil {
+			errBuf += err.Error() + "\n"
+			err = nil
+		}
 	}
 
-	if err != nil {
-		err = fmt.Errorf("One or more deletes failed, err='%s'", err.Error())
+	if errBuf != "" {
+		err = fmt.Errorf("One or more deletes failed, err='%s'", errBuf)
 		return
 	}
 
@@ -109,12 +113,10 @@ func waitForAndProcessResults(jc jcapi.JCAPI, commandObj jcapi.JCCommand) (outpu
 		return
 	}
 
-	pollTime := RESULT_POLL_TIME
-
 	fmt.Printf("\nWaiting for results...")
 
-	for i := 0; i < RESULT_MAX_POLL_TIME; i += pollTime {
-		time.Sleep(time.Duration(pollTime) * time.Second)
+	for i := 0; i < RESULT_MAX_POLL_TIME; i += RESULT_POLL_TIME {
+		time.Sleep(time.Duration(RESULT_POLL_TIME) * time.Second)
 
 		fmt.Printf(".")
 
@@ -130,6 +132,13 @@ func waitForAndProcessResults(jc jcapi.JCAPI, commandObj jcapi.JCCommand) (outpu
 		}
 
 		if len(results) == len(commandObj.Systems) {
+
+			//
+			// Note, this isn't guaranteed to get the actual result of the command, as the command
+			// may still be running. If the result is important to you, you'll probably want to verify
+			// that the result.ResponseTime is set to a valid time before you stop gathering result
+			// data.
+			//
 			break
 		}
 	}
@@ -249,7 +258,7 @@ func main() {
 	//
 	commandObj, err = jc.AddUpdateCommand(jcapi.Insert, commandObj)
 	if err != nil {
-		log.Fatalf("Could not insert a new command, err='%s'", err.Error())
+		log.Fatalf("Could not POST a new command, err='%s'", err.Error())
 	}
 	if *deleteFlag {
 		defer jc.DeleteCommand(commandObj)
@@ -278,5 +287,5 @@ func main() {
 
 	fmt.Printf(outputBuffer)
 
-	os.Exit(0)
+	return
 }
