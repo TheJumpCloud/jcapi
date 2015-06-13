@@ -71,7 +71,7 @@ func findSystemsByOSType(systems []jcapi.JCSystem, osTypeRegEx string) (indices 
 	}
 
 	for idx, system := range systems {
-		if r.Match([]byte(system.Os)) {
+		if r.Match([]byte(system.Os)) && system.Active {
 			indices = append(indices, idx)
 		}
 	}
