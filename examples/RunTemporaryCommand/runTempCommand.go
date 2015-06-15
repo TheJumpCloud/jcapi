@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/TheJumpCloud/jcapi"
@@ -21,8 +22,8 @@ const (
 	URL_BASE string = "https://console.jumpcloud.com/api"
 )
 
-func makeImmediateCommand(name, command, commandType, shell, user string) (cmd jcapi.JCCommand) {
-	cmd = jcapi.JCCommand{
+func makeImmediateCommand(name, command, commandType, shell, user string) jcapi.JCCommand {
+	return jcapi.JCCommand{
 		Name:        name,
 		Command:     command,
 		CommandType: commandType,
@@ -37,8 +38,6 @@ func makeImmediateCommand(name, command, commandType, shell, user string) (cmd j
 		Skip:        0,
 		Limit:       10,
 	}
-
-	return
 }
 
 func deleteCommandResultsByName(jc jcapi.JCAPI, commandName string) (err error) {
@@ -48,19 +47,19 @@ func deleteCommandResultsByName(jc jcapi.JCAPI, commandName string) (err error) 
 		return
 	}
 
-	errBuf := ""
+	errors := make([]string, 0, len(results))
 
 	for _, result := range results {
 
 		err = jc.DeleteCommandResult(result.Id)
 		if err != nil {
-			errBuf += err.Error() + "\n"
+			errors = append(errors, err.Error())
 			err = nil
 		}
 	}
 
-	if errBuf != "" {
-		err = fmt.Errorf("One or more deletes failed, err='%s'", errBuf)
+	if len(errors) > 0 {
+		err = fmt.Errorf("One or more deletes failed, err='%s'", strings.Join(errors, "\n"))
 		return
 	}
 
