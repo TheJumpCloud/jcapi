@@ -35,6 +35,7 @@ type JCCommand struct {
 	Timeout          string   `json:"timeout"`                  // Command time out in seconds, after which it will be killed
 	Organization     string   `json:"organization,omitempty"`   // organization ID for this command (auto-populated)
 	Sudo             bool     `json:"sudo"`                     // Indicates whether the command should be run with sudo
+	Shell            string   `json:"shell"`                    // Shell needed for Windows only, with which to execute the command (powershell/cmd)
 
 	Skip  int `json:"skip"`  // Objects to skip on /search POST
 	Limit int `json:"limit"` // Max objects to return on /search POST
