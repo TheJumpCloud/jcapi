@@ -58,9 +58,9 @@ func main() {
 				err = jc.DeleteSystem(system)
 				if err != nil {
 					log.Fatalf("Delete failed, err='%s'\n", err.Error())
+				} else {
+					fmt.Printf("SUCCESS!\n")
 				}
-
-				fmt.Printf("SUCCESS!\n")
 			}
 		}
 	}
