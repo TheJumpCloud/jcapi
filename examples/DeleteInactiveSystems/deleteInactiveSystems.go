@@ -30,6 +30,7 @@ func main() {
 	apiKey := flag.String("api-key", "", "Your JumpCloud Administrator API Key")
 	daysSinceLastConnection := flag.Int("days-since-last-connect", 30,
 		"Systems that have not connected in this many days or more, will be deleted from JumpCloud.")
+	enableDelete := flag.Bool("enable-delete", false, "Enable this flag to actually delete servers.")
 
 	flag.Parse()
 
@@ -47,19 +48,29 @@ func main() {
 
 	for _, system := range systems {
 		if system.Active == false {
-			okToDelete, err := dateBeforeNDays(system.LastContact, *daysSinceLastConnection)
-			if err != nil {
-				log.Fatalf("Could not compare date '%s' for system ID '%s' (%s), err='%s'", system.LastContact, system.Id, system.Hostname, err.Error())
+			var okToDelete bool
+
+			if system.LastContact == "" {
+				okToDelete = true
+			} else {
+				okToDelete, err = dateBeforeNDays(system.LastContact, *daysSinceLastConnection)
+				if err != nil {
+					log.Fatalf("Could not compare date '%s' for system ID '%s' (%s), err='%s'", system.LastContact, system.Id, system.Hostname, err.Error())
+				}
 			}
 
 			if okToDelete {
 				fmt.Printf("Deleting [%s] - ", system.ToString())
 
-				err = jc.DeleteSystem(system)
-				if err != nil {
-					log.Fatalf("Delete failed, err='%s'\n", err.Error())
+				if *enableDelete {
+					err = jc.DeleteSystem(system)
+					if err != nil {
+						log.Fatalf("Delete failed, err='%s'\n", err.Error())
+					} else {
+						fmt.Printf("SUCCESS!\n")
+					}
 				} else {
-					fmt.Printf("SUCCESS!\n")
+					fmt.Printf("NO ACTION TAKEN, use --enable-delete to actually delete servers\n")
 				}
 			}
 		}
