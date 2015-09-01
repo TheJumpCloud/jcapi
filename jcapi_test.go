@@ -26,7 +26,6 @@ func MakeTestUser() (user JCUser) {
 		Uid:               "2244",
 		Gid:               "2244",
 		EnableManagedUid:  true,
-		TagList:           make([]string, 0),
 		ExternallyManaged: false,
 	}
 

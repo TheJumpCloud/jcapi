@@ -3,6 +3,7 @@ package jcapi
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 )
 
 type JCUser struct {
@@ -22,7 +23,7 @@ type JCUser struct {
 	Gid              string `json:"unix_guid"`
 	EnableManagedUid bool   `json:"enable_managed_uid"`
 
-	TagList []string `json:"tags"`
+	TagIds []string `json:"tags,omitempty"` // the list of tag IDs that this user should be put in
 
 	//
 	// For identification as an external user directory source
@@ -31,7 +32,7 @@ type JCUser struct {
 	ExternalDN         string `json:"external_dn,omitempty"`
 	ExternalSourceType string `json:"external_source_type,omitempty"`
 
-	Tags []JCTag
+	Tags []JCTag // the list of actual tags the user is in
 }
 
 func UsersToString(users []JCUser) string {
@@ -64,6 +65,12 @@ func (jcuser JCUser) ToString() string {
 	return returnVal
 }
 
+func setTagIds(user *JCUser) {
+	for idx, _ := range user.Tags {
+		user.TagIds = append(user.TagIds, user.Tags[idx].Id)
+	}
+}
+
 func getJCUserFieldsFromInterface(fields map[string]interface{}, user *JCUser) {
 	user.Email = fields["email"].(string)
 
@@ -93,13 +100,13 @@ func getJCUserFieldsFromInterface(fields map[string]interface{}, user *JCUser) {
 		user.ExternalSourceType = fields["external_source_type"].(string)
 	}
 
-	// Currently returned as int, not string (though they are posted as string),
+	// Currently returned as float64, not string (though they are posted as string),
 	// defect #96322248...
-	if _, exists := fields["unix_uid"]; exists {
-		user.Uid = getStringOrNil(fields["unix_uid"])
+	if floatVal, ok := fields["unix_uid"].(float64); ok {
+		user.Uid = strconv.FormatInt(int64(floatVal), 10)
 	}
-	if _, exists := fields["unix_gid"]; exists {
-		user.Gid = getStringOrNil(fields["unix_gid"])
+	if floatVal, ok := fields["unix_guid"].(float64); ok {
+		user.Gid = strconv.FormatInt(int64(floatVal), 10)
 	}
 
 	if _, exists := fields["enable_managed_uid"]; exists {
@@ -179,6 +186,7 @@ func (jc JCAPI) GetSystemUserById(userId string, withTags bool) (user JCUser, er
 			}
 
 			user.AddJCTags(tags)
+			setTagIds(&user)
 		}
 	}
 
@@ -235,6 +243,7 @@ func (jc JCAPI) GetSystemUsers(withTags bool) (userList []JCUser, err JCError) {
 
 		for idx, _ := range userList {
 			userList[idx].AddJCTags(tags)
+			setTagIds(&userList[idx])
 		}
 	}
 
