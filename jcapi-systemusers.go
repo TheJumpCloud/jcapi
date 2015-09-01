@@ -102,17 +102,11 @@ func getJCUserFieldsFromInterface(fields map[string]interface{}, user *JCUser) {
 
 	// Currently returned as float64, not string (though they are posted as string),
 	// defect #96322248...
-	if _, exists := fields["unix_uid"]; exists {
-		floatVal, ok := fields["unix_uid"].(float64)
-		if ok {
-			user.Uid = strconv.FormatInt(int64(floatVal), 10)
-		}
+	if floatVal, ok := fields["unix_uid"].(float64); ok {
+		user.Uid = strconv.FormatInt(int64(floatVal), 10)
 	}
-	if _, exists := fields["unix_guid"]; exists {
-		floatVal, ok := fields["unix_guid"].(float64)
-		if ok {
-			user.Gid = strconv.FormatInt(int64(floatVal), 10)
-		}
+	if floatVal, ok := fields["unix_guid"].(float64); ok {
+		user.Gid = strconv.FormatInt(int64(floatVal), 10)
 	}
 
 	if _, exists := fields["enable_managed_uid"]; exists {
