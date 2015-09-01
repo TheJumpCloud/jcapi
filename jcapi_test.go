@@ -16,17 +16,16 @@ var testAPIKey string = os.Getenv("JUMPCLOUD_APIKEY")
 
 func MakeTestUser() (user JCUser) {
 	user = JCUser{
-		UserName:         "testuser",
-		FirstName:        "Test",
-		LastName:         "User",
-		Email:            "testuser@jumpcloud.com",
-		Password:         "test!@#$ADSF",
-		Activated:        true,
-		Sudo:             true,
-		Uid:              "2244",
-		Gid:              "2244",
-		EnableManagedUid: true,
-		//TagList:           make([]string, 0),
+		UserName:          "testuser",
+		FirstName:         "Test",
+		LastName:          "User",
+		Email:             "testuser@jumpcloud.com",
+		Password:          "test!@#$ADSF",
+		Activated:         true,
+		Sudo:              true,
+		Uid:               "2244",
+		Gid:               "2244",
+		EnableManagedUid:  true,
 		ExternallyManaged: false,
 	}
 
