@@ -127,7 +127,12 @@ func waitForAndProcessResults(jc jcapi.JCAPI, commandObj jcapi.JCCommand) (outpu
 
 		// Walk the results and add their exit code to the map (maps system name to the result data)
 		for _, result := range results {
-			systemsFound[result.System] = result.Response
+			details, err2 := jc.GetCommandResultDetailsById(result.Id)
+			if err2 != nil {
+				err = fmt.Errorf("Could not get command result details by ID, err='%s'", err.Error())
+				return
+			}
+			systemsFound[result.System] = details.Response
 		}
 
 		if len(results) == len(commandObj.Systems) {
