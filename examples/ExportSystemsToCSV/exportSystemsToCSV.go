@@ -31,10 +31,10 @@ func main() {
 
 	jc := jcapi.NewJCAPI(apiKey, apiUrl)
 
-	// Grab all system users with their tags
+	// Grab all systems with their tags
 	systems, err := jc.GetSystems(true)
 	if err != nil {
-		fmt.Printf("Could not read system users, err='%s'\n", err)
+		fmt.Printf("Could not read systems, err='%s'\n", err)
 		return
 	}
 
