@@ -48,6 +48,7 @@ func main() {
 	out("AgentVersion")
 	out("CreatedDate")
 	out("LastContactDate")
+	out("Tags")
 	endLine()
 
 	for _, system := range systems {
