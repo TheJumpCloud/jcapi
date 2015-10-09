@@ -11,18 +11,6 @@ const (
 	apiUrl string = "https://console.jumpcloud.com/api"
 )
 
-func outFirst(data string) {
-	fmt.Printf("\"%s\"", data)
-}
-
-func out(data string) {
-	fmt.Printf(",\"%s\"", data)
-}
-
-func endLine() {
-	fmt.Printf("\n")
-}
-
 func main() {
 	apiKey := os.Getenv("JUMPCLOUD_APIKEY")
 	if apiKey == "" {
