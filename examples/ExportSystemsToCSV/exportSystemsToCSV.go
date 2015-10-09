@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/csv"
 	"fmt"
 	"github.com/TheJumpCloud/jcapi"
 	"os"
@@ -38,35 +39,23 @@ func main() {
 		return
 	}
 
-	outFirst("Id")
-	out("DisplayName")
-	out("HostName")
-	out("Active")
-	out("Instance ID")
-	out("OS")
-	out("OSVersion")
-	out("AgentVersion")
-	out("CreatedDate")
-	out("LastContactDate")
-	out("Tags")
-	endLine()
+	csvWriter := csv.NewWriter(os.Stdout)
+	defer csvWriter.Flush()
+
+	headers := []string{"Id", "DisplayName", "HostName", "Active", "Instance ID", "OS", "OSVersion",
+		"AgentVersion", "CreatedDate", "LastContactDate", "Tags"}
+
+	csvWriter.Write(headers)
 
 	for _, system := range systems {
-		outFirst(system.Id)
-		out(system.DisplayName)
-		out(system.Hostname)
-		out(fmt.Sprintf("%t", system.Active))
-		out(system.AmazonInstanceID)
-		out(system.Os)
-		out(system.Version)
-		out(system.AgentVersion)
-		out(system.Created)
-		out(system.LastContact)
+		outLine := []string{system.Id, system.DisplayName, system.Hostname, fmt.Sprintf("%t", system.Active),
+			system.AmazonInstanceID, system.Os, system.Version, system.AgentVersion, system.Created,
+			system.LastContact}
 
 		for _, tag := range system.Tags {
-			out(tag.Name)
+			outLine = append(outLine, tag.Name)
 		}
 
-		endLine()
+		csvWriter.Write(outLine)
 	}
 }
