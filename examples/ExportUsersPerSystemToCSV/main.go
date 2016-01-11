@@ -18,8 +18,7 @@ type systemMapToUserMap map[string]map[string]struct{}
 func main() {
 	apiKey := os.Getenv("JUMPCLOUD_APIKEY")
 	if apiKey == "" {
-		fmt.Printf("%s: Please run:\n\n\texport JUMPCLOUD_APIKEY=<your-JumpCloud-API-key>\n", os.Args[0])
-		os.Exit(1)
+		log.Fatalf("%s: Please run:\n\n\texport JUMPCLOUD_APIKEY=<your-JumpCloud-API-key>\n", os.Args[0])
 	}
 
 	jc := jcapi.NewJCAPI(apiKey, apiUrl)
