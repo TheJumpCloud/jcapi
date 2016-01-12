@@ -4,15 +4,7 @@ set -e
 BUILD_TARGETS="darwin/amd64 linux/386 linux/amd64 windows/386 windows/amd64"
 
 FOLDERS_TO_BUILD=(
-  "examples/BackupRestoreTags/"
-  "examples/clearDisplayNames/"
-  "examples/CSVImporter/"
-  "examples/DeleteInactiveSystems/"
-  "examples/ExportSystemsToCSV/"
-  "examples/ExportUsersPerSystemToCSV/"
-  "examples/ExportUsersToCSV/"
-  "examples/releaseAllUsers/"
-  "examples/RunTemporaryCommand/"
+  examples/*
 )
 
 function go_build () {
@@ -47,6 +39,7 @@ function package_directory () {
 }
 
 BUILD_PATH="`pwd`/build"
+rm -rf $BUILD_PATH
 mkdir -p $BUILD_PATH
 
 for target in ${BUILD_TARGETS}; do
