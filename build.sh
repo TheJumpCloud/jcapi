@@ -1,36 +1,64 @@
 #!/bin/bash
 set -e
 
-BUILD_PATH="`pwd`/build"
-mkdir -p $BUILD_PATH
+BUILD_TARGETS="darwin/amd64 linux/386 linux/amd64 windows/386 windows/amd64"
+
+FOLDERS_TO_BUILD=(
+  "examples/BackupRestoreTags/"
+  "examples/clearDisplayNames/"
+  "examples/CSVImporter/"
+  "examples/DeleteInactiveSystems/"
+  "examples/ExportSystemsToCSV/"
+  "examples/ExportUsersPerSystemToCSV/"
+  "examples/ExportUsersToCSV/"
+  "examples/releaseAllUsers/"
+  "examples/RunTemporaryCommand/"
+)
 
 function go_build () {
   OUTPUT_PREFIX=${PWD##*/}
   GOOS="$1"
   GOARCH="$2"
-  go build -o "${BUILD_PATH}/${OUTPUT_PREFIX}_${GOOS}_${GOARCH}"
-}
-
-function cross_build () {
-  go_build "darwin" "amd64"
-  go_build "linux" "386"
-  go_build "linux" "amd64"
-  go_build "windows" "386"
-  go_build "windows" "amd64"
+  go build -o "${BUILD_PATH}/${GOOS}_${GOARCH}/${OUTPUT_PREFIX}_${GOOS}_${GOARCH}"
 }
 
 function build_directory () {
-  echo $@
-  pushd $1
-  cross_build
+  MY_DIR=$1
+  GOOS=$2
+  GOARCH=$3
+  pushd $MY_DIR
+  go_build $GOOS $GOARCH
   popd
 }
 
-FOLDERS_TO_BUILD=(
-  "examples/ExportUsersPerSystemToCSV/"
-)
+function create_build_directory () {
+  GOOS=$1
+  GOARCH=$2
+  mkdir -p "${BUILD_PATH}/${GOOS}_${GOARCH}"
+}
 
-for path in "${FOLDERS_TO_BUILD[@]}"; do
-  build_directory $path
+function package_directory () {
+  GOOS=$1
+  GOARCH=$2
+
+  pushd "${BUILD_PATH}/${GOOS}_${GOARCH}"
+  zip -r "../JumpCloudAPI_${GOOS}_${GOARCH}.zip" .
+  popd
+}
+
+BUILD_PATH="`pwd`/build"
+mkdir -p $BUILD_PATH
+
+for target in ${BUILD_TARGETS}; do
+	split=(${target//\// })
+	GOOS=${split[0]}
+	GOARCH=${split[1]}
+	create_build_directory $GOOS $GOARCH
+
+  for path in "${FOLDERS_TO_BUILD[@]}"; do
+    build_directory $path $GOOS $GOARCH
+  done
+
+  package_directory $GOOS $GOARCH
 done
 
