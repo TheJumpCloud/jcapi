@@ -7,21 +7,22 @@ import (
 )
 
 type JCUser struct {
-	Id               string `json:"_id,omitempty"`
-	UserName         string `json:"username,omitempty"`
-	FirstName        string `json:"firstname,omitempty"`
-	LastName         string `json:"lastname,omitempty"`
-	Email            string `json:"email"`
-	Password         string `json:"password,omitempty"`
-	PasswordDate     string `json:"password_date,omitempty"`
-	Activated        bool   `json:"activated"`
-	ActivationKey    string `json:"activation_key"`
-	ExpiredWarned    bool   `json:"expired_warned"`
-	PasswordExpired  bool   `json:"password_expired"`
-	Sudo             bool   `json:"sudo"`
-	Uid              string `json:"unix_uid"`
-	Gid              string `json:"unix_guid"`
-	EnableManagedUid bool   `json:"enable_managed_uid"`
+	Id                  string `json:"_id,omitempty"`
+	UserName            string `json:"username,omitempty"`
+	FirstName           string `json:"firstname,omitempty"`
+	LastName            string `json:"lastname,omitempty"`
+	Email               string `json:"email"`
+	Password            string `json:"password,omitempty"`
+	PasswordDate        string `json:"password_date,omitempty"`
+	Activated           bool   `json:"activated"`
+	ActivationKey       string `json:"activation_key"`
+	ExpiredWarned       bool   `json:"expired_warned"`
+	PasswordExpired     bool   `json:"password_expired"`
+	PendingProvisioning bool   `json:"pendingProvisioning,omitempty"`
+	Sudo                bool   `json:"sudo"`
+	Uid                 string `json:"unix_uid"`
+	Gid                 string `json:"unix_guid"`
+	EnableManagedUid    bool   `json:"enable_managed_uid"`
 
 	TagIds []string `json:"tags,omitempty"` // the list of tag IDs that this user should be put in
 
@@ -64,7 +65,8 @@ func (jcuser JCUser) ToString() string {
 	returnVal += fmt.Sprintf("JCUSER: ExternallyManaged=[%t] - ExternalDN=[%s] - ExternalSourceType=[%s]\n",
 		jcuser.ExternallyManaged, jcuser.ExternalDN, jcuser.ExternalSourceType)
 
-	returnVal += fmt.Sprintf("JCUSER: PasswordExpired=[%t]\n", jcuser.PasswordExpired)
+	returnVal += fmt.Sprintf("JCUSER: PasswordExpired=[%t] - Active=[%t] - PendingProvisioning=[%t]\n", jcuser.PasswordExpired, jcuser.Activated,
+		jcuser.PendingProvisioning)
 
 	for _, tag := range jcuser.Tags {
 		returnVal += fmt.Sprintf("\t%s\n", tag.ToString())
@@ -123,6 +125,14 @@ func getJCUserFieldsFromInterface(fields map[string]interface{}, user *JCUser) {
 
 	if _, exists := fields["password_expired"]; exists {
 		user.PasswordExpired = fields["password_expired"].(bool)
+	}
+
+	if _, exists := fields["activated"]; exists {
+		user.Activated = fields["activated"].(bool)
+	}
+
+	if _, exists := fields["pendingProvisioning"]; exists {
+		user.PendingProvisioning = fields["pendingProvisioning"].(bool)
 	}
 
 	if _, exists := fields["password_date"]; exists {
