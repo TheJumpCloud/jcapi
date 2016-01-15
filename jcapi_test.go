@@ -11,7 +11,7 @@ import (
 const (
 	testUrlBase   string = "https://console.jumpcloud.com/api"
 	authUrlBase   string = "https://auth.jumpcloud.com"
-	emailTemplate string = "james@jumpcloud.com"
+	emailTemplate string = "testuser@example.com" // Change this to your own email to see resend of password reset emails
 )
 
 var testAPIKey string = os.Getenv("JUMPCLOUD_APIKEY")
