@@ -264,7 +264,7 @@ func (jc JCAPI) GetSystemUsers(withTags bool) (userList []JCUser, err JCError) {
 func (jc JCAPI) SendUserActivationEmail(userList []JCUser) (err JCError) {
 	for _, user := range userList {
 		if user.Id == "" {
-			return fmt.Errorf("ERROR: Cannot resend user activation email without a systemuser Id on user ")
+			return fmt.Errorf("ERROR: Cannot resend user activation email without a systemuser Id on user %v", user)
 		}
 	}
 
@@ -275,7 +275,7 @@ func (jc JCAPI) SendUserActivationEmail(userList []JCUser) (err JCError) {
 
 	data, err := json.Marshal(emailRequest)
 	if err != nil {
-		return fmt.Errorf("ERROR: Could not marshal JCUser object, err='%s'", err)
+		return fmt.Errorf("ERROR: Could not marshal JCUserEmailRequest object, err='%s'", err)
 	}
 
 	url := "/systemusers/reactivate"
