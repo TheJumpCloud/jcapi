@@ -16,6 +16,11 @@ const (
 
 var testAPIKey string = os.Getenv("JUMPCLOUD_APIKEY")
 
+//
+// For email systems that support it (such as GMail), we take the email and add a "+" after the
+// name, so that it is unique in our database and in the email "to" field, while still being sent
+// to the original email address.
+//
 func getRealEmail(token string) (email string) {
 	emailParts := strings.Split(emailTemplate, "@")
 
