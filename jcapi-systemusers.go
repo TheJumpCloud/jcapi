@@ -35,6 +35,14 @@ type JCUser struct {
 	Tags []JCTag // the list of actual tags the user is in
 }
 
+//
+// Special request structure for sending activation emails
+//
+type JCUserEmailRequest struct {
+	IsSelectAll bool     `json:"isSelectAll"`
+	Models      []JCUser `json:"models"`
+}
+
 func UsersToString(users []JCUser) string {
 	returnVal := ""
 
@@ -245,6 +253,36 @@ func (jc JCAPI) GetSystemUsers(withTags bool) (userList []JCUser, err JCError) {
 			userList[idx].AddJCTags(tags)
 			setTagIds(&userList[idx])
 		}
+	}
+
+	return
+}
+
+//
+// Resend user email
+//
+func (jc JCAPI) SendUserActivationEmail(userList []JCUser) (err JCError) {
+	for _, user := range userList {
+		if user.Id == "" {
+			return fmt.Errorf("ERROR: Cannot resend user activation email without a systemuser Id on user %v", user)
+		}
+	}
+
+	emailRequest := JCUserEmailRequest{
+		IsSelectAll: false,
+		Models:      userList,
+	}
+
+	data, err := json.Marshal(emailRequest)
+	if err != nil {
+		return fmt.Errorf("ERROR: Could not marshal JCUserEmailRequest object, err='%s'", err)
+	}
+
+	url := "/systemusers/reactivate"
+
+	_, err = jc.Do(MapJCOpToHTTP(Insert), url, data)
+	if err != nil {
+		return fmt.Errorf("ERROR: Could not post resend email request object, err='%s'", err)
 	}
 
 	return

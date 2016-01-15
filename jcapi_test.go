@@ -3,23 +3,41 @@ package jcapi
 import (
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 	"time"
 )
 
 const (
-	testUrlBase string = "https://console.jumpcloud.com/api"
-	authUrlBase string = "https://auth.jumpcloud.com"
+	testUrlBase   string = "https://console.jumpcloud.com/api"
+	authUrlBase   string = "https://auth.jumpcloud.com"
+	emailTemplate string = "testuser@example.com" // Change this to your own email to see resend of password reset emails
 )
 
 var testAPIKey string = os.Getenv("JUMPCLOUD_APIKEY")
+
+//
+// For email systems that support it (such as GMail), we take the email and add a "+" after the
+// name, so that it is unique in our database and in the email "to" field, while still being sent
+// to the original email address.
+//
+func getRealEmail(token string) (email string) {
+	emailParts := strings.Split(emailTemplate, "@")
+
+	if len(emailParts) == 2 {
+		email = emailParts[0] + "+" + token + "@" + emailParts[1]
+		return
+	}
+
+	return token
+}
 
 func MakeTestUser() (user JCUser) {
 	user = JCUser{
 		UserName:          "testuser",
 		FirstName:         "Test",
 		LastName:          "User",
-		Email:             "testuser@jumpcloud.com",
+		Email:             getRealEmail("testuser1"),
 		Password:          "test!@#$ADSF",
 		Activated:         true,
 		Sudo:              true,
@@ -32,6 +50,37 @@ func MakeTestUser() (user JCUser) {
 	return
 }
 
+func MakeTestUser2() (user JCUser) {
+	user = JCUser{
+		UserName:          "testuser2",
+		FirstName:         "Test",
+		LastName:          "User 2",
+		Email:             getRealEmail("testuser2"),
+		Password:          "test!@#$ADSF",
+		Activated:         true,
+		Sudo:              true,
+		Uid:               "2245",
+		Gid:               "2245",
+		EnableManagedUid:  true,
+		ExternallyManaged: false,
+	}
+
+	return
+}
+
+func TestAPIKey(t *testing.T) {
+	if testAPIKey == "" {
+		t.Fatalf("You must export JUMPCLOUD_APIKEY=<your-API-key> before running these tests")
+	}
+
+	jcapi := NewJCAPI(testAPIKey, testUrlBase)
+
+	_, err := jcapi.GetAllTags()
+	if err != nil {
+		t.Fatalf("Your JUMPCLOUD_APIKEY may be invalid, could not get a list of all tags")
+	}
+}
+
 //
 // Note: This test requires at least one system to be installed on the
 // JumpCloud account referenced by the API key.
@@ -41,10 +90,11 @@ func TestSystems(t *testing.T) {
 
 	systems, err := jcapi.GetSystems(true)
 	if err != nil {
-		t.Fatalf("couldn't get systems, err='%s'", err.Error())
+		t.Fatalf("Couldn't get systems, err='%s'", err.Error())
 	}
+
 	if len(systems) == 0 {
-		t.Fatalf("no systems found")
+		t.Skip("No systems found, this test requires that you have systems added to your JumpCloud account")
 	}
 
 	t.Logf("%d Systems found\n", len(systems))
@@ -159,6 +209,33 @@ func TestSystemUsersByOne(t *testing.T) {
 	}
 
 	return
+}
+
+func TestResendActivationEmail(t *testing.T) {
+	jcapi := NewJCAPI(testAPIKey, testUrlBase)
+
+	userList := []JCUser{MakeTestUser(), MakeTestUser2()}
+
+	var err error
+
+	userList[0].Id, err = jcapi.AddUpdateUser(Insert, userList[0])
+	if err != nil {
+		t.Fatalf("Could not insert test user %v, err='%s'", userList[0], err)
+	}
+
+	defer jcapi.DeleteUser(userList[0])
+
+	userList[1].Id, err = jcapi.AddUpdateUser(Insert, userList[1])
+	if err != nil {
+		t.Fatalf("Could not insert test user %v, err='%s'", userList[1], err)
+	}
+
+	defer jcapi.DeleteUser(userList[1])
+
+	err = jcapi.SendUserActivationEmail(userList)
+	if err != nil {
+		t.Fatalf("Could not send user activation email, err='%s'", err)
+	}
 }
 
 func TestSystemUsers(t *testing.T) {
@@ -455,11 +532,11 @@ func TestRadiusServer(t *testing.T) {
 	// Let's get a few tags added to our account
 	//
 	for i := 0; i < RADIUS_SERVER_COUNT; i++ {
-		tag := mockEmptyTag(fmt.Sprintf(" RS test tag %d", i), "")
+		tag := mockEmptyTag(fmt.Sprintf("RS test tag %d", i), "")
 
 		id, err := jcapi.AddUpdateTag(Insert, tag)
 		if err != nil {
-			t.Fatalf("Could not insert a new test tag for Radius Server test, err='%s'", err.Error())
+			t.Fatalf("Could not insert a new test tag %v for Radius Server test, err='%s'", tag, err.Error())
 		}
 
 		tag.Id = id
@@ -579,6 +656,10 @@ func TestCommands(t *testing.T) {
 		t.Fatalf("Could not get a list of all systems, err='%s'")
 	}
 
+	if len(systems) == 0 {
+		t.Skip("No systems found, this test requires that you have systems added to your JumpCloud account")
+	}
+
 	// Find the first Linux host available (doesn't matter what it is)...
 	systemIndex, err := FindObjectByStringRegex(GetInterfaceArrayFromJCSystems(systems), "Os", "CentOS|Ubuntu|Amazon|Debian")
 	if err != nil {
@@ -660,6 +741,10 @@ func TestCommandResults(t *testing.T) {
 	systems, err := jc.GetSystems(false)
 	if err != nil {
 		t.Fatalf("Could not get a list of all systems, err='%s'")
+	}
+
+	if len(systems) == 0 {
+		t.Skip("No systems found, this test requires that you have systems added to your JumpCloud account")
 	}
 
 	// Find the first Linux host available (doesn't matter what it is)...
