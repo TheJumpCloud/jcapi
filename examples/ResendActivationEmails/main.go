@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/TheJumpCloud/jcapi"
 )
@@ -30,6 +31,11 @@ func yOrN(question string) (yes bool) {
 }
 
 func main() {
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
+		flag.PrintDefaults()
+	}
+
 	apiKey := flag.String("api-key", "", "Your JumpCloud Administrator API Key.")
 	activationFlag := flag.Bool("activation", false, "Set this flag to true to resend emails only to users who have not activated their system user account.")
 	pendingProvisioningFlag := flag.Bool("pendingProvisioning", false, "Set this flag to true to resend emails only to users who have not yet set their password as part of Google Apps provisioning.")
@@ -37,10 +43,12 @@ func main() {
 	flag.Parse()
 
 	if *apiKey == "" {
+		flag.Usage()
 		log.Fatalf("api-key is required, please set it to the API key of a JumpCloud administrator on your JumpCloud account.")
 	}
 
 	if *activationFlag == false && *pendingProvisioningFlag == false {
+		flag.Usage()
 		log.Fatalf("Neither 'activation' nor 'pendingProvisioning' flags are set to true, no work to do.")
 	}
 
