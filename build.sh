@@ -34,7 +34,7 @@ function package_directory () {
   GOARCH=$2
 
   pushd "${BUILD_PATH}/${GOOS}_${GOARCH}"
-  zip -r "../JumpCloudAPI_${GOOS}_${GOARCH}.zip" .
+  zip -r "../JumpCloudAPI_Examples_${GOOS}_${GOARCH}.zip" .
   popd
 }
 
