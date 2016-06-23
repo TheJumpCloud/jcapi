@@ -4,25 +4,27 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"time"
 )
 
 type JCUser struct {
-	Id                  string `json:"_id,omitempty"`
-	UserName            string `json:"username,omitempty"`
-	FirstName           string `json:"firstname,omitempty"`
-	LastName            string `json:"lastname,omitempty"`
-	Email               string `json:"email"`
-	Password            string `json:"password,omitempty"`
-	PasswordDate        string `json:"password_date,omitempty"`
-	Activated           bool   `json:"activated"`
-	ActivationKey       string `json:"activation_key"`
-	ExpiredWarned       bool   `json:"expired_warned"`
-	PasswordExpired     bool   `json:"password_expired"`
-	PendingProvisioning bool   `json:"pendingProvisioning,omitempty"`
-	Sudo                bool   `json:"sudo"`
-	Uid                 string `json:"unix_uid"`
-	Gid                 string `json:"unix_guid"`
-	EnableManagedUid    bool   `json:"enable_managed_uid"`
+	Id                     string    `json:"_id,omitempty"`
+	UserName               string    `json:"username,omitempty"`
+	FirstName              string    `json:"firstname,omitempty"`
+	LastName               string    `json:"lastname,omitempty"`
+	Email                  string    `json:"email"`
+	Password               string    `json:"password,omitempty"`
+	PasswordDate           string    `json:"password_date,omitempty"`
+	Activated              bool      `json:"activated"`
+	ActivationKey          string    `json:"activation_key"`
+	ExpiredWarned          bool      `json:"expired_warned"`
+	PasswordExpired        bool      `json:"password_expired"`
+	PasswordExpirationDate time.Time `json:"password_expiration_date,omitempty"`
+	PendingProvisioning    bool      `json:"pendingProvisioning,omitempty"`
+	Sudo                   bool      `json:"sudo"`
+	Uid                    string    `json:"unix_uid"`
+	Gid                    string    `json:"unix_guid"`
+	EnableManagedUid       bool      `json:"enable_managed_uid"`
 
 	TagIds []string `json:"tags,omitempty"` // the list of tag IDs that this user should be put in
 
@@ -155,6 +157,31 @@ func getJCUsersFromInterface(userInt interface{}) []JCUser {
 	}
 
 	return returnVal
+}
+
+type JCUserFilterFunc func(JCUser) bool
+
+func (jc JCAPI) FilterUsers(users []JCUser, filter JCUserFilterFunc) []JCUser {
+	filteredUsers := []JCUser{}
+	for user := range users {
+		if filter(user) {
+			filteredUsers = append(filteredUsers, user)
+		}
+	}
+	return filteredUsers
+}
+
+// Searches for all systemusers who's passwords are expiring within the given date range
+// Bounds are inclusive
+func (jc JCAPI) GetSysemUsersByPasswordEpiryDate(lowerBound, upperBound time.Time) ([]JCUser, JCError) {
+	returnUsers := []JCUser{}
+
+	jcUserReq, err := jc.Post("/search/systemusers", jc.dateFilter("password_expiration_date", upperBound, lowerBound))
+	if err != nil {
+		return nil, err
+	}
+
+	return getJCUsersFromInterface(jcUserReq), nil
 }
 
 // Executes a search by email via the JumpCloud API

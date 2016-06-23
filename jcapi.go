@@ -14,7 +14,7 @@ import (
 
 const (
 	responseSize = 256 * 1024
-	stdUrlBase   = "https://console.jumpcloud.com/api"
+	StdUrlBase   = "https://console.jumpcloud.com/api"
 )
 
 type JCOp uint8
@@ -100,6 +100,19 @@ func getTimeString() string {
 	t := time.Now()
 
 	return t.Format(time.RFC3339)
+}
+
+type JCDateFilterMap map[string]time.Time
+
+func (jc JCAPI) dateFilter(field string, upperBound, lowerBound time.Time) ([]byte, error) {
+	filterMap := map[string]interface{}{}
+	fieldFilterMap := map[string]JCDateFilterMap{}
+	fieldParametersFilterMap := JCDateFilterMap{}
+	fieldParametersFilterMap["$gte"] = lowerBound
+	fieldParametersFilterMap["$lte"] = upperBound
+	fieldFilterMap[field] = fieldParametersFilterMap
+	filterMap["filter"] = fieldFilterMap
+	return json.Marshal(filterMap)
 }
 
 func (jc JCAPI) emailFilter(email string) []byte {
