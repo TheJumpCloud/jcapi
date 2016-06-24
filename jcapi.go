@@ -14,7 +14,7 @@ import (
 
 const (
 	responseSize = 256 * 1024
-	stdUrlBase   = "https://console.jumpcloud.com/api"
+	StdUrlBase   = "https://console.jumpcloud.com/api"
 )
 
 type JCOp uint8

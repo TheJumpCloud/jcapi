@@ -4,25 +4,28 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"time"
 )
 
+// If you add a field here make sure to add corresponding logic to getJCUserFieldsFromInterface
 type JCUser struct {
-	Id                  string `json:"_id,omitempty"`
-	UserName            string `json:"username,omitempty"`
-	FirstName           string `json:"firstname,omitempty"`
-	LastName            string `json:"lastname,omitempty"`
-	Email               string `json:"email"`
-	Password            string `json:"password,omitempty"`
-	PasswordDate        string `json:"password_date,omitempty"`
-	Activated           bool   `json:"activated"`
-	ActivationKey       string `json:"activation_key"`
-	ExpiredWarned       bool   `json:"expired_warned"`
-	PasswordExpired     bool   `json:"password_expired"`
-	PendingProvisioning bool   `json:"pendingProvisioning,omitempty"`
-	Sudo                bool   `json:"sudo"`
-	Uid                 string `json:"unix_uid"`
-	Gid                 string `json:"unix_guid"`
-	EnableManagedUid    bool   `json:"enable_managed_uid"`
+	Id                     string    `json:"_id,omitempty"`
+	UserName               string    `json:"username,omitempty"`
+	FirstName              string    `json:"firstname,omitempty"`
+	LastName               string    `json:"lastname,omitempty"`
+	Email                  string    `json:"email"`
+	Password               string    `json:"password,omitempty"`
+	PasswordDate           string    `json:"password_date,omitempty"`
+	Activated              bool      `json:"activated"`
+	ActivationKey          string    `json:"activation_key"`
+	ExpiredWarned          bool      `json:"expired_warned"`
+	PasswordExpired        bool      `json:"password_expired"`
+	PasswordExpirationDate time.Time `json:"password_expiration_date,omitempty"`
+	PendingProvisioning    bool      `json:"pendingProvisioning,omitempty"`
+	Sudo                   bool      `json:"sudo"`
+	Uid                    string    `json:"unix_uid"`
+	Gid                    string    `json:"unix_guid"`
+	EnableManagedUid       bool      `json:"enable_managed_uid"`
 
 	TagIds []string `json:"tags,omitempty"` // the list of tag IDs that this user should be put in
 
@@ -81,7 +84,7 @@ func setTagIds(user *JCUser) {
 	}
 }
 
-func getJCUserFieldsFromInterface(fields map[string]interface{}, user *JCUser) {
+func getJCUserFieldsFromInterface(fields map[string]interface{}, user *JCUser) error {
 	user.Email = fields["email"].(string)
 
 	if _, exists := fields["firstname"]; exists {
@@ -138,9 +141,18 @@ func getJCUserFieldsFromInterface(fields map[string]interface{}, user *JCUser) {
 	if _, exists := fields["password_date"]; exists {
 		user.PasswordDate = fields["password_date"].(string)
 	}
+
+	if _, exists := fields["password_expiration_date"]; exists {
+		var err error
+		user.PasswordExpirationDate, err = time.Parse(time.RFC3339, fields["password_expiration_date"].(string))
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
-func getJCUsersFromInterface(userInt interface{}) []JCUser {
+func getJCUsersFromInterface(userInt interface{}) ([]JCUser, error) {
 
 	var returnVal []JCUser
 
@@ -151,10 +163,13 @@ func getJCUsersFromInterface(userInt interface{}) []JCUser {
 	returnVal = make([]JCUser, len(results))
 
 	for idx, result := range results {
-		getJCUserFieldsFromInterface(result.(map[string]interface{}), &returnVal[idx])
+		err := getJCUserFieldsFromInterface(result.(map[string]interface{}), &returnVal[idx])
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	return returnVal
+	return returnVal, nil
 }
 
 // Executes a search by email via the JumpCloud API
@@ -166,7 +181,10 @@ func (jc JCAPI) GetSystemUserByEmail(email string, withTags bool) ([]JCUser, JCE
 		return nil, fmt.Errorf("ERROR: Post to JumpCloud failed, err='%s'", err)
 	}
 
-	returnVal = getJCUsersFromInterface(jcUserRec)
+	returnVal, err = getJCUsersFromInterface(jcUserRec)
+	if err != nil {
+		return nil, err
+	}
 
 	if withTags {
 		tags, err := jc.GetAllTags()
@@ -188,10 +206,14 @@ func (jc JCAPI) GetSystemUserById(userId string, withTags bool) (user JCUser, er
 	retVal, err := jc.Get(url)
 	if err != nil {
 		err = fmt.Errorf("ERROR: Could not get system user by ID '%s', err='%s'", userId, err)
+		return user, err
 	}
 
 	if retVal != nil {
-		getJCUserFieldsFromInterface(retVal.(map[string]interface{}), &user)
+		err := getJCUserFieldsFromInterface(retVal.(map[string]interface{}), &user)
+		if err != nil {
+			return user, err
+		}
 
 		if withTags {
 			// I should be able to use err below as the err return value, but there's
@@ -200,7 +222,7 @@ func (jc JCAPI) GetSystemUserById(userId string, withTags bool) (user JCUser, er
 			tags, err2 := jc.GetAllTags()
 			if err != nil {
 				err = fmt.Errorf("ERROR: Could not get tags, err='%s'", err2)
-				return
+				return user, err
 			}
 
 			user.AddJCTags(tags)
@@ -227,7 +249,10 @@ func (jc JCAPI) GetSystemUsers(withTags bool) (userList []JCUser, err JCError) {
 		}
 
 		// We really only care about the ID for the following call...
-		returnVal = getJCUsersFromInterface(jcUserRec)
+		returnVal, err = getJCUsersFromInterface(jcUserRec)
+		if err != nil {
+			return
+		}
 
 		for i, _ := range returnVal {
 			if returnVal[i].Id != "" {
@@ -322,7 +347,10 @@ func (jc JCAPI) AddUpdateUser(op JCOp, user JCUser) (userId string, err JCError)
 	}
 
 	var returnUser JCUser
-	getJCUserFieldsFromInterface(jcUserRec.(map[string]interface{}), &returnUser)
+	err = getJCUserFieldsFromInterface(jcUserRec.(map[string]interface{}), &returnUser)
+	if err != nil {
+		return "", err
+	}
 
 	if returnUser.Email != user.Email {
 		return "", fmt.Errorf("ERROR: JumpCloud did not return the same email - this should never happen!")
