@@ -29,7 +29,7 @@ func main() {
 
 	// Attach to JumpCloud
 	// jc := jcapi.NewJCAPI(apiKey, jcapi.StdUrlBase)
-	jc := jcapi.NewJCAPI(apiKey, "http://dev.local:3004/api")
+	jc := jcapi.NewJCAPI(apiKey, jc.StdUrlBase)
 
 	// Fetch all users who's password expires between given dates in
 	userList, err := jc.GetSystemUsers(false)
