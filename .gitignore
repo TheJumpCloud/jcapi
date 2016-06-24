@@ -27,3 +27,5 @@ _testmain.go
 *.swp
 
 build/
+
+.DS_Store

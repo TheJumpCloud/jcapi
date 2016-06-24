@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/TheJumpCloud/jcapi"
 )
@@ -27,10 +28,11 @@ func main() {
 	}
 
 	// Attach to JumpCloud
-	jc := jcapi.NewJCAPI(apiKey, jcapi.StdUrlBase)
+	// jc := jcapi.NewJCAPI(apiKey, jcapi.StdUrlBase)
+	jc := jcapi.NewJCAPI(apiKey, "http://dev.local:3004/api")
 
 	// Fetch all users who's password expires between given dates in
-	userList, err := jc.GetSysemUsersByPasswordEpiryDate()
+	userList, err := jc.GetSystemUsers(false)
 
 	if err != nil {
 		fmt.Printf("Could not read system users, err='%s'\n", err)
@@ -38,7 +40,12 @@ func main() {
 	}
 
 	// Setup access the CSV file specified
-	w := csv.NewWriter(csvFile)
+	file, err := os.Create(csvFile)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer file.Close()
+	w := csv.NewWriter(file)
 
 	if err := w.Write([]string{"FIRSTNAME", "LASTNAME", "EMAIL", "PASSWORD EXPIRY DATE"}); err != nil {
 		log.Fatalln("error writing record to csv:", err)

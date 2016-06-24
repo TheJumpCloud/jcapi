@@ -7,6 +7,7 @@ import (
 	"time"
 )
 
+// If you add a field here make sure to add corresponding logic to getJCUserFieldsFromInterface
 type JCUser struct {
 	Id                     string    `json:"_id,omitempty"`
 	UserName               string    `json:"username,omitempty"`
@@ -140,6 +141,10 @@ func getJCUserFieldsFromInterface(fields map[string]interface{}, user *JCUser) {
 	if _, exists := fields["password_date"]; exists {
 		user.PasswordDate = fields["password_date"].(string)
 	}
+
+	if _, exists := fields["password_expiration_date"]; exists {
+		user.PasswordExpirationDate, _ = time.Parse(time.RFC3339, fields["password_expiration_date"].(string))
+	}
 }
 
 func getJCUsersFromInterface(userInt interface{}) []JCUser {
@@ -157,31 +162,6 @@ func getJCUsersFromInterface(userInt interface{}) []JCUser {
 	}
 
 	return returnVal
-}
-
-type JCUserFilterFunc func(JCUser) bool
-
-func (jc JCAPI) FilterUsers(users []JCUser, filter JCUserFilterFunc) []JCUser {
-	filteredUsers := []JCUser{}
-	for user := range users {
-		if filter(user) {
-			filteredUsers = append(filteredUsers, user)
-		}
-	}
-	return filteredUsers
-}
-
-// Searches for all systemusers who's passwords are expiring within the given date range
-// Bounds are inclusive
-func (jc JCAPI) GetSysemUsersByPasswordEpiryDate(lowerBound, upperBound time.Time) ([]JCUser, JCError) {
-	returnUsers := []JCUser{}
-
-	jcUserReq, err := jc.Post("/search/systemusers", jc.dateFilter("password_expiration_date", upperBound, lowerBound))
-	if err != nil {
-		return nil, err
-	}
-
-	return getJCUsersFromInterface(jcUserReq), nil
 }
 
 // Executes a search by email via the JumpCloud API
