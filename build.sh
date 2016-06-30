@@ -11,7 +11,14 @@ function go_build () {
   OUTPUT_PREFIX=${PWD##*/}
   GOOS="$1"
   GOARCH="$2"
-  go build -o "${BUILD_PATH}/${GOOS}_${GOARCH}/${OUTPUT_PREFIX}_${GOOS}_${GOARCH}"
+  
+  if [ "$GOOS" == "windows" ]; then
+    SUFFIX=".exe"
+  else 
+    SUFFIX=""
+  fi
+
+  GOOS=$GOOS GOARCH=$GOARCH go build -o "${BUILD_PATH}/${GOOS}_${GOARCH}/${OUTPUT_PREFIX}_${GOOS}_${GOARCH}${SUFFIX}"
 }
 
 function build_directory () {
