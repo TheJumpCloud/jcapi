@@ -35,11 +35,11 @@ This tool allows you as a system administrator to download a CSV of all of your 
 
 This will install a binary called `passwordExpiryWatcher` to your `$GOBIN`
 
-> If you'd like to be able to call this binary from an arbitrary directory make sure your `$GOBIN` is in your `$PATH` (linux) or `%PATH` (windows)
+> If you'd like to be able to call this binary from an arbitrary directory make sure your `$GOBIN` is in your `$PATH` (linux) or `%PATH%` (windows)
 
 ### To Run
 
-To run this tool you will need to use what is called the "command line". On Windows this is a program called "Power Shell", on macOS it is an app called "Terminal". 
+To run this tool you will need to use the command line. On Windows you can use PowerShell and on OSX you can use Terminal. 
 
 > While running this tool requires no previous experience with either of those programs some might feel wary or nervous working with a tool they don't understand. The following instructions in this section should provide you with all you need to get up and running, but if you would like to learn about the how and why of the command line we highly recommend the excellent (and free!) [Command Line Crash Course by Zed Shaw](http://cli.learncodethehardway.org/). Zed even provides a direct email hotline for users that get stuck. However if you are stuck and would rather just get your users' password expiration dates ASAP please don't hesitate to contact JumpCloud support for assistance running this tool.
 
@@ -49,24 +49,17 @@ This tool only takes two (required) arguments:
 
 For example:
 
-macOS/Linux:
-
 `./PasswordExpiryWatcher -key=82105124f2979e28273d4e8dd32b2355c5012837 -output=password_expirations.csv`
-
-Windows:
-
-`./PasswordExpiryWatcher.exe -key=82105124f2979e28273d4e8dd32b2355c5012837 -output=password_expirations.csv`
-
 
 > If you have renamed your binary simply replace `PasswordExpiryWatcher` with the new name
 
-> If you installed the binary with the Go toolchain and your `$GOBIN` is in your `$PATH` or `%PATH`, or if you moved the binary to `/usr/local/bin` you can run the above command at any time on your command line excluding the "./"
+> If you installed the binary with the Go toolchain and your `$GOBIN` is in your `$PATH` or `%PATH%`, or if you moved the binary to `/usr/local/bin` you can run the above command at any time on your command line excluding the "./"
 
 ##### Windows Instructions
-1. Open the program `Power Shell`
+1. Open `PowerShell`
 2. Using the `cd` (stands for "Change Directory") command navigate to where you downloaded your binaries
 	- For example, if we downloaded and unzipped the binaries in our `Download` folder we just have to run: `cd Downloads\JumpCloudAPI_Examples_windows_386`. If we downloaded to our desktop the command will probably look something like: `cd Desktop\JumpCloudAPI_Examples_windows_386`
-	- If you used the Go install instructions and your `$GOBIN` is in your `%PATH` you can skip step 2 and go right to 3
+	- If you used the Go install instructions and your `$GOBIN` is in your `%PATH%` you can skip step 2 and go right to 3
 3. Grab your API key from the JumpCloud Admin console
 	- Click on your email on the top right hand corner to access the API Settings
 4. Run the command
@@ -75,10 +68,10 @@ Windows:
 		- Good Example: `-output=C:\Users\MyUser\CSVFiles\password_expirations.csv` 
 		- Bad Example `-output=..\CSVFiles\password_expirations.csv`
 
-> To run a command simply type it into the Power Shell window and hit `Enter` or `Return` when finished 
+> To run a command simply type it into the PowerShell window and hit `Enter` or `Return` when finished 
 
 ##### macOS/Linux Instructions
-1. Open the app `Terminal` (this can be found in `Applications/Utilities`)
+1. Open `Terminal` (this can be found in `Applications/Utilities`)
 2. Using the `cd` (stands for "Change Directory") command navigate to where you downloaded your binaries
 	- For example, if we downloaded and unzipped the binaries in our `Download` folder we just have to run: `cd Downloads/JumpCloudAPI_Examples_darwin_amd64`. If we downloaded to our desktop the command will probably look something like: `cd Desktop/JumpCloudAPI_Examples_darwin_amd64`
 	- If you used the Go install instructions and your `$GOBIN` is in your `$PATH`, or if you manually moved the binary to `/usr/local/bin` you can skip step 2 and go right to 3
@@ -86,11 +79,8 @@ Windows:
 	- Click on your email on the top right hand corner to access the API Settings
 4. Run the command
 	- `./PasswordExpiryWatcher -key=YOUR_API_KEY_GOES_HERE -output=CSV_FILE_OUTPUT_GOES_HERE`
-	- If you would like your CSV file to go somewhere else besides the current directory make sure you include the _full path_ of the file
-		- Good Example: `-output=/Users/MyUser/CSVFiles/password_expirations.csv` 
-		- Bad Example `-output=../CSVFiles/password_expirations.csv`
 
 > To run a command simply type it into the Terminal window and hit `Enter` or `Return` when finished 
 
 ### Example Output
-![example csv output](https://cloud.githubusercontent.com/assets/712346/16349989/182347a6-3a19-11e6-969a-09a744a0f2ca.png)
+![example csv output](https://cloud.githubusercontent.com/assets/712346/16528743/ed9b697e-3f7b-11e6-8410-d2020bf673bf.png)
