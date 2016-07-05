@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
+	"time"
 
 	"github.com/TheJumpCloud/jcapi"
 )
@@ -39,19 +41,35 @@ func main() {
 	}
 
 	// Setup access the CSV file specified
-	file, err := os.Create(csvFile)
+	path, err := filepath.Abs(csvFile)
+	if err != nil {
+		log.Fatal("Entered an incorrect file path for CSV output")
+	}
+	file, err := os.Create(path)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer file.Close()
 	w := csv.NewWriter(file)
 
-	if err := w.Write([]string{"FIRSTNAME", "LASTNAME", "EMAIL", "PASSWORD EXPIRY DATE"}); err != nil {
+	if err := w.Write([]string{"FIRSTNAME", "LASTNAME", "EMAIL", "PASSWORD EXPIRY DATE", "PASSWORD EXPIRED"}); err != nil {
 		log.Fatalln("error writing record to csv:", err)
 	}
 
 	for _, record := range userList {
-		if err := w.Write([]string{record.FirstName, record.LastName, record.Email, record.PasswordExpirationDate.String()}); err != nil {
+		nullTime := time.Time{}
+		var expired, passwordExpirationString string
+		if record.PasswordExpired {
+			expired = "YES"
+		} else {
+			expired = "NO"
+		}
+		if record.PasswordExpirationDate == nullTime {
+			passwordExpirationString = "No Date Set"
+		} else {
+			passwordExpirationString = record.PasswordExpirationDate.String()
+		}
+		if err := w.Write([]string{record.FirstName, record.LastName, record.Email, passwordExpirationString, expired}); err != nil {
 			log.Fatalln("error writing record to csv:", err)
 		}
 	}
@@ -61,7 +79,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	fmt.Printf("Finished")
+	fmt.Println("Finished")
 
 	return
 }
