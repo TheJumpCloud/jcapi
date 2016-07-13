@@ -4,10 +4,11 @@ import (
 	"encoding/csv"
 	"flag"
 	"fmt"
-	"github.com/TheJumpCloud/jcapi"
 	"io"
 	"os"
 	"strings"
+
+	"github.com/TheJumpCloud/jcapi"
 )
 
 //
@@ -113,6 +114,8 @@ func ProcessCSVRecord(jc jcapi.JCAPI, userList *[]jcapi.JCUser, csvRecord []stri
 		// Special case for sole boolean to be parsed
 		if i == 6 {
 			currentUser.Sudo = jcapi.GetTrueOrFalse(element)
+		} else if i == 3 {
+			*fieldMap[i] = strings.ToLower(element)
 		} else {
 			// Default case is to move the string into the var
 			*fieldMap[i] = element
