@@ -1,14 +1,10 @@
 package main
 
 import (
+	"flag"
 	"fmt"
-	"github.com/TheJumpCloud/jcapi"
-)
 
-const (
-	// Change this to your own API key, here
-	apiKey  string = "<your-api-key-here>"
-	urlBase string = "https://console.jumpcloud.com/api"
+	"github.com/TheJumpCloud/jcapi"
 )
 
 //
@@ -21,6 +17,26 @@ const (
 // users in your account.
 //
 func main() {
+	var apiKey string
+	var urlBase string
+
+	// Obtain the input parameters
+	flag.StringVar(&urlBase, "url", "", "-url=<jumpcloud-api-url>")
+	flag.StringVar(&apiKey, "key", "", "-key=<API-key-value>")
+	flag.Parse()
+
+	if apiKey == "" {
+		fmt.Println("Usage of ./releaseAllUsers:")
+		fmt.Println("  -key=\"\": -key=<API-key-value>")
+		fmt.Println("  -url=\"\": -url=<jumpcloud-api-url>")
+		return
+	}
+
+	// since most people won't want to override this
+	if urlBase == "" {
+		urlBase = "https://console.jumpcloud.com/api"
+	}
+
 	jc := jcapi.NewJCAPI(apiKey, urlBase)
 
 	userList, err := jc.GetSystemUsers(false)
