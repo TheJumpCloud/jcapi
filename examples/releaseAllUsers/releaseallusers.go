@@ -21,14 +21,14 @@ func main() {
 	var urlBase string
 
 	// Obtain the input parameters
-	flag.StringVar(&urlBase, "url", "", "-url=<jumpcloud-api-url>")
 	flag.StringVar(&apiKey, "key", "", "-key=<API-key-value>")
+	flag.StringVar(&urlBase, "url", "", "-url=<jumpcloud-api-url>")
 	flag.Parse()
 
 	if apiKey == "" {
 		fmt.Println("Usage of ./releaseAllUsers:")
 		fmt.Println("  -key=\"\": -key=<API-key-value>")
-		fmt.Println("  -url=\"\": -url=<jumpcloud-api-url>")
+		fmt.Println("  -url=\"\": -url=<jumpcloud-api-url> (optional)")
 		return
 	}
 
