@@ -22,7 +22,7 @@ func main() {
 
 	// Obtain the input parameters
 	flag.StringVar(&apiKey, "key", "", "-key=<API-key-value>")
-	flag.StringVar(&urlBase, "url", "", "-url=<jumpcloud-api-url>")
+	flag.StringVar(&urlBase, "url", "https://console.jumpcloud.com/api", "-url=<jumpcloud-api-url>")
 	flag.Parse()
 
 	if apiKey == "" {
@@ -30,11 +30,6 @@ func main() {
 		fmt.Println("  -key=\"\": -key=<API-key-value>")
 		fmt.Println("  -url=\"\": -url=<jumpcloud-api-url> (optional)")
 		return
-	}
-
-	// since most people won't want to override this
-	if urlBase == "" {
-		urlBase = "https://console.jumpcloud.com/api"
 	}
 
 	jc := jcapi.NewJCAPI(apiKey, urlBase)
