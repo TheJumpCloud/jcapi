@@ -41,7 +41,7 @@ This will install a binary called `releaseAllUsers` to your `$GOBIN`
 
 To run this tool you will need to use the command line. On Windows you can use PowerShell and on OSX you can use Terminal. 
 
-> While running this tool requires no previous experience with either of those programs some might feel wary or nervous working with a tool they don't understand. The following instructions in this section should provide you with all you need to get up and running, but if you would like to learn about the how and why of the command line we highly recommend the excellent (and free!) [Command Line Crash Course by Zed Shaw](http://cli.learncodethehardway.org/). Zed even provides a direct email hotline for users that get stuck. However if you are stuck and would rather just get your users' password expiration dates ASAP please don't hesitate to contact JumpCloud support for assistance running this tool.
+> While running this tool requires no previous experience with either of those programs some might feel wary or nervous working with a tool they don't understand. The following instructions in this section should provide you with all you need to get up and running, but if you would like to learn about the how and why of the command line we highly recommend the excellent (and free!) [Command Line Crash Course by Zed Shaw](http://cli.learncodethehardway.org/). Zed even provides a direct email hotline for users that get stuck. If problems persist, or you are unsure of where to begin contact JumpCloud support for assistance running this tool.
 
 This tool only takes two arguments:
 - `key` is your JumpCloud API key (required)
