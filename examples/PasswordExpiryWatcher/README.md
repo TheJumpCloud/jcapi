@@ -64,9 +64,6 @@ For example:
 	- Click on your email on the top right hand corner to access the API Settings
 4. Run the command
 	- `./PasswordExpiryWatcher.exe -key=YOUR_API_KEY_GOES_HERE -output=CSV_FILE_OUTPUT_GOES_HERE`
-	- If you would like your CSV file to go somewhere else besides the current directory make sure you include the _full path_ of the file
-		- Good Example: `-output=C:\Users\MyUser\CSVFiles\password_expirations.csv` 
-		- Bad Example `-output=..\CSVFiles\password_expirations.csv`
 
 > To run a command simply type it into the PowerShell window and hit `Enter` or `Return` when finished 
 
