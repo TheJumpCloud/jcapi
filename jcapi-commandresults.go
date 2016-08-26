@@ -106,6 +106,19 @@ func (jc JCAPI) GetCommandResultsByName(name string) (commandResultList []JCComm
 	return
 }
 
+func (jc JCAPI) GetCommandResultsBySavedCommandID(id string) (commandResults []JCCommandResult, err JCError) {
+	url := fmt.Sprintf("%s/%s/results", COMMAND_PATH, id)
+	body, err := jc.DoBytes(MapJCOpToHTTP(Read), url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := json.Unmarshal(body, &commandResults); err != nil {
+		return nil, err
+	}
+	return commandResults, err
+}
+
 func FindCommandResultById(commandResults []JCCommandResult, id string) (result *JCCommandResult, index int) {
 	index = FindObject(GetInterfaceArrayFromJCCommandResults(commandResults), "Id", id)
 	if index >= 0 {
