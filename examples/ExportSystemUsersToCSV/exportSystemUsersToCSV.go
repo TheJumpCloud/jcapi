@@ -16,6 +16,8 @@ import (
 // URLBase is the production api endpoint.
 const URLBase string = "https://console.jumpcloud.com/api"
 
+var api jcapi.JCAPI
+
 func main() {
 	var apiKey string
 	var commandID string
@@ -36,11 +38,13 @@ func main() {
 		log.Fatalln("Command id must be provided")
 	}
 
-	api := jcapi.NewJCAPI(apiKey, url)
+	api = jcapi.NewJCAPI(apiKey, url)
 	results, err := api.GetCommandResultsBySavedCommandID(commandID)
 	if err != nil {
 		log.Fatalln(err)
 	}
+
+	hostnameMap := createSystemIDToHostnameMap(results)
 
 	var output *os.File
 	if outfile != "" {
@@ -58,7 +62,7 @@ func main() {
 
 	defer output.Close()
 
-	if err := writeResultsToCSV(results, output); err != nil {
+	if err := writeResultsToCSV(results, hostnameMap, output); err != nil {
 		log.Fatalln("Error writing to csv: %s", err.Error())
 	}
 }
@@ -71,10 +75,10 @@ func getFileWriter(absPath string) (*os.File, error) {
 	return os.Create(absPath)
 }
 
-func writeResultsToCSV(results []jcapi.JCCommandResult, writer io.Writer) error {
+func writeResultsToCSV(results []jcapi.JCCommandResult, hostnameMap map[string]string, writer io.Writer) error {
 	w := csv.NewWriter(writer)
 
-	if err := w.Write([]string{"SYSTEM ID", "USERNAME", "JUMPCLOUD USERNAME", "COMMAND REQUEST TIME"}); err != nil {
+	if err := w.Write([]string{"SYSTEM ID", "HOSTNAME", "USERNAME", "JUMPCLOUD USERNAME", "COMMAND REQUEST TIME"}); err != nil {
 		return err
 	}
 	w.Flush()
@@ -84,7 +88,7 @@ func writeResultsToCSV(results []jcapi.JCCommandResult, writer io.Writer) error 
 		for _, line := range lines {
 			line = strings.TrimSpace(line)
 			if line != "" {
-				if err := w.Write([]string{result.System, line, "", result.RequestTime}); err != nil {
+				if err := w.Write([]string{result.System, hostnameMap[result.System], line, "", result.RequestTime}); err != nil {
 					return err
 				}
 
@@ -93,4 +97,27 @@ func writeResultsToCSV(results []jcapi.JCCommandResult, writer io.Writer) error 
 		w.Flush()
 	}
 	return nil
+}
+
+func getHostnameForID(systemID string) (string, error) {
+	system, err := api.GetSystemById(systemID, false)
+	if err != nil {
+		return "", err
+	}
+	return system.Hostname, nil
+}
+
+func createSystemIDToHostnameMap(results []jcapi.JCCommandResult) map[string]string {
+	hostnameMap := make(map[string]string)
+
+	for _, result := range results {
+		if hostnameMap[result.System] == "" {
+			hostname, err := getHostnameForID(result.System)
+			if err != nil {
+				log.Printf("Error fetching hostname for %s: %s", result.System, err.Error())
+			}
+			hostnameMap[result.System] = hostname
+		}
+	}
+	return hostnameMap
 }
