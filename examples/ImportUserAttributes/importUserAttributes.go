@@ -1,28 +1,23 @@
 package main
 
 import (
+	"bufio"
 	"encoding/csv"
 	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
 	"os"
-
 	"regexp"
 
 	"github.com/TheJumpCloud/jcapi"
 )
 
-// DefaultURLBase is the production api endpoint.
-const DefaultURLBase string = "https://console.jumpcloud.com/api"
-
-type userAttribute struct {
-	Name  string `json:"name"`
-	Value string `json:"value"`
-}
+const defaultURLBase string = "https://console.jumpcloud.com/api"
+const defaultOutFile string = "results.log"
 
 type userAttributes struct {
-	Attributes []userAttribute `json:"attributes"`
+	Attributes []jcapi.JCUserAttribute `json:"attributes"`
 }
 
 func getUserByEmail(jc jcapi.JCAPI, email string) ([]jcapi.JCUser, error) {
@@ -35,17 +30,28 @@ func getUserByEmail(jc jcapi.JCAPI, email string) ([]jcapi.JCUser, error) {
 	return jcUsers, nil
 }
 
-func buildAttributes(userRecord []string, attributeNames []string) userAttributes {
+func buildAttributes(user jcapi.JCUser, userRecord []string, attributeNames []string) userAttributes {
 
+	// build map of existing user attributes
+	attributeMap := make(map[string]jcapi.JCUserAttribute)
+	for _, attribute := range user.Attributes {
+		attributeMap[attribute.Name] = attribute
+	}
+
+	// add or overwrite attributes from file record
 	recordLen := len(userRecord)
-	attributeArray := make([]userAttribute, len(attributeNames))
-
 	for i, attributeName := range attributeNames {
-		attributeArray[i] = userAttribute{Name: attributeName}
+		attribute := jcapi.JCUserAttribute{Name: attributeName}
 		// acount for empty attributes at end of record
 		if recordLen > (i + 1) {
-			attributeArray[i].Value = userRecord[i+1]
+			attribute.Value = userRecord[i+1]
 		}
+		attributeMap[attributeName] = attribute
+	}
+
+	attributeArray := make([]jcapi.JCUserAttribute, 0, len(attributeMap))
+	for _, attribute := range attributeMap {
+		attributeArray = append(attributeArray, attribute)
 	}
 
 	return userAttributes{attributeArray}
@@ -89,12 +95,51 @@ func validateAttributeNames(attributeNames []string) error {
 
 }
 
+func outputResultsToFile(outputFilePath string, attributeCount int, userCount int, importedUserCount int, unknownUsers []string, errorsByUser map[string]error) {
+
+	// Write to results file
+	outputFile, err := os.Create(outputFilePath)
+	if err != nil {
+		fmt.Printf("Error creating output file: %s\n", err.Error())
+		return
+	}
+
+	defer outputFile.Close()
+
+	writer := bufio.NewWriter(outputFile)
+
+	writer.WriteString("User Attribute Import Results\n")
+	writer.WriteString(fmt.Sprintf("  %d attributes processed\n", attributeCount))
+	writer.WriteString(fmt.Sprintf("  %d users processed\n", userCount))
+	writer.WriteString(fmt.Sprintf("  %d users had attributes imported\n", importedUserCount))
+	writer.WriteString(fmt.Sprintf("  %d users not found\n", len(unknownUsers)))
+	writer.WriteString(fmt.Sprintf("  %d errors processing users\n", len(errorsByUser)))
+
+	if len(unknownUsers) > 0 {
+		writer.WriteString("\nUnknown Users:\n")
+		for _, userEmail := range unknownUsers {
+			writer.WriteString(fmt.Sprintf("  %s\n", userEmail))
+		}
+	}
+
+	if len(errorsByUser) > 0 {
+		fmt.Println("\nUser Errors:")
+		for email, err := range errorsByUser {
+			writer.WriteString(fmt.Sprintf("  %s: %s\n", email, err.Error()))
+		}
+	}
+
+	writer.Flush()
+
+}
+
 func main() {
 
 	// input parameters
 	apiKey := flag.String("api-key", "", "Your JumpCloud Administrator API Key")
-	inputFilePath := flag.String("inputFile", "", "CSV file containing user identifier and attributes")
-	baseURL := flag.String("url", DefaultURLBase, "Base API Url override")
+	inputFilePath := flag.String("input", "", "CSV file containing user identifier and attributes")
+	outputFilePath := flag.String("output", defaultOutFile, "Results file")
+	baseURL := flag.String("url", defaultURLBase, "Base API Url override")
 
 	flag.Parse()
 
@@ -118,7 +163,7 @@ func main() {
 	reader := csv.NewReader(inputFile)
 	reader.FieldsPerRecord = -1 // indicates records have optional fields
 
-	// Read header row (userIdentifier, attributeName(s)...)
+	// Read header row (email, attributeName(s)...)
 	headerRecord, err := reader.Read()
 	if err != nil {
 		fmt.Printf("Error reading header row: %s\n", err)
@@ -129,19 +174,21 @@ func main() {
 		fmt.Printf("Invalid header row: File must contain at least 2 columns\n")
 		return
 	}
+
 	attributeNames := headerRecord[1:]
 	err = validateAttributeNames(attributeNames)
 	if err != nil {
-		fmt.Printf("Invalid attribute name: %s\n\n", err)
+		fmt.Printf("Invalid attribute name: %s\n", err)
 		return
 	}
 
-	// Read each row (user identifier + attribute values)
+	// Result tracking
 	userCount := 0
 	importedUserCount := 0
 	var unknownUsers []string
 	var errorsByUser = make(map[string]error)
 
+	// Read each row (email + attribute values)
 	for {
 
 		record, err := reader.Read()
@@ -162,14 +209,14 @@ func main() {
 			errorsByUser[email] = err
 			continue
 		}
-
 		if len(users) == 0 {
 			unknownUsers = append(unknownUsers, email)
 			continue
 		}
 
+		// Build attribute list and import
 		user := users[0]
-		attributes := buildAttributes(record, attributeNames)
+		attributes := buildAttributes(user, record, attributeNames)
 		err = importUserAttributes(jc, user, attributes)
 		if err != nil {
 			errorsByUser[email] = err
@@ -179,26 +226,15 @@ func main() {
 
 	}
 
+	outputResultsToFile(*outputFilePath, len(attributeNames), userCount, importedUserCount, unknownUsers, errorsByUser)
+
 	fmt.Println("\nImport complete:")
+	fmt.Printf("  %d attributes processed\n", len(attributeNames))
 	fmt.Printf("  %d users processed\n", userCount)
-	fmt.Printf("  %d users imported\n", importedUserCount)
+	fmt.Printf("  %d users has attributes imported\n", importedUserCount)
 	fmt.Printf("  %d users not found\n", len(unknownUsers))
 	fmt.Printf("  %d errors processing users\n", len(errorsByUser))
-
-	if len(unknownUsers) > 0 {
-		fmt.Println("\nUnknown Users:")
-		for _, userEmail := range unknownUsers {
-			fmt.Printf("  %s\n", userEmail)
-		}
-	}
-
-	if len(errorsByUser) > 0 {
-		fmt.Println("\nUser Errors:")
-		for email, err := range errorsByUser {
-			fmt.Printf("  %s: %s\n", email, err.Error())
-		}
-	}
-	fmt.Println("")
+	fmt.Printf("\nResults output to file %s\n\n", *outputFilePath)
 
 	return
 
