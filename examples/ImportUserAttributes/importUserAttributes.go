@@ -8,6 +8,8 @@ import (
 	"io"
 	"os"
 
+	"regexp"
+
 	"github.com/TheJumpCloud/jcapi"
 )
 
@@ -65,6 +67,28 @@ func importUserAttributes(jc jcapi.JCAPI, user jcapi.JCUser, attributes userAttr
 
 }
 
+func validateAttributeNames(attributeNames []string) error {
+
+	// 0 < length < 32
+	// Alphanumeric, no spaces
+	isAlphaNumeric := regexp.MustCompile(`^[0-9A-Za-z]+$`).MatchString
+	for _, attributeName := range attributeNames {
+		nameLen := len(attributeName)
+		if nameLen == 0 {
+			return fmt.Errorf("Attribute name is empty")
+		}
+		if nameLen > 32 {
+			return fmt.Errorf("Attribute name exceeds 32 characters [%s]", attributeName)
+		}
+		if !isAlphaNumeric(attributeName) {
+			return fmt.Errorf("Attribute name contains non-alphanumeric characters or spaces [%s]", attributeName)
+		}
+	}
+
+	return nil
+
+}
+
 func main() {
 
 	// input parameters
@@ -106,7 +130,11 @@ func main() {
 		return
 	}
 	attributeNames := headerRecord[1:]
-	// TODO: validate attribute names?
+	err = validateAttributeNames(attributeNames)
+	if err != nil {
+		fmt.Printf("Invalid attribute name: %s\n\n", err)
+		return
+	}
 
 	// Read each row (user identifier + attribute values)
 	userCount := 0
