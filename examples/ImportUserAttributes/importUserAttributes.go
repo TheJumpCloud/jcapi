@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"regexp"
+	"time"
 
 	"github.com/TheJumpCloud/jcapi"
 )
@@ -200,6 +201,12 @@ func main() {
 		if err != nil {
 			fmt.Printf("Error reading record on line %d: %s\n", userCount+1, err)
 			return
+		}
+
+		// sleep every 50 users to not overload API server
+		if userCount%50 == 0 {
+			fmt.Printf("%d users processed. Sleeping 5 seconds...\n", userCount)
+			time.Sleep(time.Second * 5)
 		}
 
 		// Fetch user by email
