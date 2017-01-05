@@ -78,8 +78,8 @@ func (jcuser JCUser) ToString() string {
 	returnVal += fmt.Sprintf("JCUSER: PasswordExpired=[%t] - Active=[%t] - PendingProvisioning=[%t]\n", jcuser.PasswordExpired, jcuser.Activated,
 		jcuser.PendingProvisioning)
 
-	if len(jcuser.Attributes) > 0 {
-		returnVal += fmt.Sprintf("JCUSER: Attributes %s", jcuser.Attributes)
+	for _, attribute := range jcuser.Attributes {
+		returnVal += fmt.Sprintf("\t%s\n", attribute.ToString())
 	}
 
 	for _, tag := range jcuser.Tags {
@@ -87,6 +87,10 @@ func (jcuser JCUser) ToString() string {
 	}
 
 	return returnVal
+}
+
+func (attribute JCUserAttribute) ToString() string {
+	return fmt.Sprintf("attribute [%s: %s]", attribute.Name, attribute.Value)
 }
 
 func setTagIds(user *JCUser) {
@@ -161,12 +165,17 @@ func getJCUserFieldsFromInterface(fields map[string]interface{}, user *JCUser) e
 		}
 	}
 
-	if _, exists := fields["attributes"]; exists {
-		attributes := fields["attributes"].([]interface{})
+	if attrs, exists := fields["attributes"]; exists {
+		attributes := attrs.([]interface{})
 		for _, attributeMapInt := range attributes {
 			attributeMap := attributeMapInt.(map[string]interface{})
-			user.Attributes = append(user.Attributes,
-				JCUserAttribute{Name: attributeMap["name"].(string), Value: attributeMap["value"].(string)})
+			attrName, nameExists := attributeMap["name"]
+			if nameExists {
+				attrValue, valueExists := attributeMap["value"]
+				if valueExists {
+					user.Attributes = append(user.Attributes, JCUserAttribute{Name: attrName.(string), Value: attrValue.(string)})
+				}
+			}
 		}
 	}
 

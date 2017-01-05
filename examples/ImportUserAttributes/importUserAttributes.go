@@ -14,8 +14,10 @@ import (
 	"github.com/TheJumpCloud/jcapi"
 )
 
-const defaultURLBase string = "https://console.jumpcloud.com/api"
-const defaultOutFile string = "results.log"
+const (
+	defaultURLBase = "https://console.jumpcloud.com/api"
+	defaultOutFile = "results.log"
+)
 
 type userAttributes struct {
 	Attributes []jcapi.JCUserAttribute `json:"attributes"`
@@ -25,8 +27,7 @@ func getUserByEmail(jc jcapi.JCAPI, email string) ([]jcapi.JCUser, error) {
 	jcUsers, jcErr := jc.GetSystemUserByEmail(email, false)
 
 	if jcErr != nil {
-		err := fmt.Errorf("Error retrieving user for email %s: %s", email, jcErr.Error())
-		return jcUsers, err
+		return nil, fmt.Errorf("Error retrieving user for email %s: %s", email, jcErr)
 	}
 	return jcUsers, nil
 }
