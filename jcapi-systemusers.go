@@ -7,6 +7,11 @@ import (
 	"time"
 )
 
+type JCUserAttribute struct {
+	Name  string `json:"name"`
+	Value string `json:"value"`
+}
+
 // If you add a field here make sure to add corresponding logic to getJCUserFieldsFromInterface
 type JCUser struct {
 	Id                     string    `json:"_id,omitempty"`
@@ -26,6 +31,8 @@ type JCUser struct {
 	Uid                    string    `json:"unix_uid"`
 	Gid                    string    `json:"unix_guid"`
 	EnableManagedUid       bool      `json:"enable_managed_uid"`
+
+	Attributes []JCUserAttribute `json:"attributes,omitempty"`
 
 	TagIds []string `json:"tags,omitempty"` // the list of tag IDs that this user should be put in
 
@@ -71,11 +78,19 @@ func (jcuser JCUser) ToString() string {
 	returnVal += fmt.Sprintf("JCUSER: PasswordExpired=[%t] - Active=[%t] - PendingProvisioning=[%t]\n", jcuser.PasswordExpired, jcuser.Activated,
 		jcuser.PendingProvisioning)
 
+	for _, attribute := range jcuser.Attributes {
+		returnVal += fmt.Sprintf("\t%s\n", attribute.ToString())
+	}
+
 	for _, tag := range jcuser.Tags {
 		returnVal += fmt.Sprintf("\t%s\n", tag.ToString())
 	}
 
 	return returnVal
+}
+
+func (attribute JCUserAttribute) ToString() string {
+	return fmt.Sprintf("attribute [%s: %s]", attribute.Name, attribute.Value)
 }
 
 func setTagIds(user *JCUser) {
@@ -149,6 +164,21 @@ func getJCUserFieldsFromInterface(fields map[string]interface{}, user *JCUser) e
 			return err
 		}
 	}
+
+	if attrs, exists := fields["attributes"]; exists {
+		attributes := attrs.([]interface{})
+		for _, attributeMapInt := range attributes {
+			attributeMap := attributeMapInt.(map[string]interface{})
+			attrName, nameExists := attributeMap["name"]
+			if nameExists {
+				attrValue, valueExists := attributeMap["value"]
+				if valueExists {
+					user.Attributes = append(user.Attributes, JCUserAttribute{Name: attrName.(string), Value: attrValue.(string)})
+				}
+			}
+		}
+	}
+
 	return nil
 }
 
