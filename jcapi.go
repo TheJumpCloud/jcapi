@@ -2,6 +2,7 @@ package jcapi
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -30,6 +31,7 @@ const (
 type JCAPI struct {
 	ApiKey  string
 	UrlBase string
+	ctx     context.Context
 }
 
 const (
@@ -55,10 +57,11 @@ func (e *errorString) Error() string {
 	return e.s
 }
 
-func NewJCAPI(apiKey string, urlBase string) JCAPI {
+func NewJCAPI(ctx context.Context, apiKey string, urlBase string) JCAPI {
 	return JCAPI{
 		ApiKey:  apiKey,
 		UrlBase: urlBase,
+		ctx:     ctx,
 	}
 }
 
