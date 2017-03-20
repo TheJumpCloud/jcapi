@@ -18,11 +18,13 @@ type JCRestAuth struct {
 	Tag      string `json:"tag"`
 }
 
+type HTTPFunc func(context.Context) *http.Client
+
 func DefaultClient(_ context.Context) *http.Client {
 	return &http.Client{}
 }
 
-var HTTPClientFn = DefaultClient
+var HTTPClientFn HTTPFunc = DefaultClient
 
 func (e JCRestAuth) ToString() string {
 	return fmt.Sprintf("jcRestAuth: username='%s' - password='<hidden>' - tag='%s'\n",
