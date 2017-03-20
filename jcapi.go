@@ -57,11 +57,19 @@ func (e *errorString) Error() string {
 	return e.s
 }
 
-func NewJCAPI(ctx context.Context, apiKey string, urlBase string) JCAPI {
+func NewJCAPIWithContext(ctx context.Context, apiKey string, urlBase string) JCAPI {
 	return JCAPI{
 		ApiKey:  apiKey,
 		UrlBase: urlBase,
 		ctx:     ctx,
+	}
+}
+
+func NewJCAPI(apiKey string, urlBase string) JCAPI {
+	return JCAPI{
+		ApiKey:  apiKey,
+		UrlBase: urlBase,
+		ctx:     context.Background(),
 	}
 }
 
