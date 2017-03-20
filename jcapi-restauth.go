@@ -2,6 +2,7 @@ package jcapi
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -16,6 +17,12 @@ type JCRestAuth struct {
 	Password string `json:"password"`
 	Tag      string `json:"tag"`
 }
+
+func DefaultClient(_ context.Context) *http.Client {
+	return &http.Client{}
+}
+
+var HTTPClientFn = DefaultClient
 
 func (e JCRestAuth) ToString() string {
 	return fmt.Sprintf("jcRestAuth: username='%s' - password='<hidden>' - tag='%s'\n",
@@ -36,7 +43,7 @@ func (jc JCAPI) AuthUser(username, password, tag string) (userAuthenticated bool
 		return false, fmt.Errorf("ERROR: Could not marshal the authentication request, err='%s'", err.Error())
 	}
 
-	client := &http.Client{}
+	client := HTTPClientFn(jc.ctx)
 
 	req, err := http.NewRequest("POST", jc.UrlBase+AUTHENTICATE_PATH, bytes.NewReader(data))
 	if err != nil {
