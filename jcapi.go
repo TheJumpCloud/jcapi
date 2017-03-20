@@ -170,7 +170,7 @@ func (jc JCAPI) Do(op, url string, data []byte) (interface{}, JCError) {
 
 	fullUrl := jc.UrlBase + url
 
-	client := &http.Client{}
+	client := HTTPClientFn(jc.ctx)
 
 	req, err := http.NewRequest(op, fullUrl, bytes.NewReader(data))
 	if err != nil {
@@ -207,7 +207,7 @@ func (jc JCAPI) DoBytes(op, urlQuery string, data []byte) ([]byte, JCError) {
 
 	fullUrl := jc.UrlBase + urlQuery
 
-	client := &http.Client{}
+	client := HTTPClientFn(jc.ctx)
 
 	req, err := http.NewRequest(op, fullUrl, bytes.NewReader(data))
 	if err != nil {
