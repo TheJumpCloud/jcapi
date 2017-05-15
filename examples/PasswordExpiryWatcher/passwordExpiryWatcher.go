@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	"github.com/TheJumpCloud/jcapi"
@@ -18,8 +19,8 @@ func main() {
 	var csvFile string
 
 	// Obtain the input parameters
-	flag.StringVar(&csvFile, "output", "o", "-output=<filename>")
-	flag.StringVar(&apiKey, "key", "k", "-key=<API-key-value>")
+	flag.StringVar(&csvFile, "output", "", "-output=<filename>")
+	flag.StringVar(&apiKey, "key", "", "-key=<API-key-value>")
 	flag.Parse()
 
 	if csvFile == "" || apiKey == "" {
@@ -52,7 +53,7 @@ func main() {
 	defer file.Close()
 	w := csv.NewWriter(file)
 
-	if err := w.Write([]string{"FIRSTNAME", "LASTNAME", "EMAIL", "PASSWORD EXPIRY DATE", "PASSWORD EXPIRED"}); err != nil {
+	if err := w.Write([]string{"FIRSTNAME", "LASTNAME", "EMAIL", "PASSWORD EXPIRY DATE", "PASSWORD EXPIRED", "MFA ENABLED", "MFA VERIFIED"}); err != nil {
 		log.Fatalln("error writing record to csv:", err)
 	}
 
@@ -69,7 +70,7 @@ func main() {
 		} else {
 			passwordExpirationString = record.PasswordExpirationDate.String()
 		}
-		if err := w.Write([]string{record.FirstName, record.LastName, record.Email, passwordExpirationString, expired}); err != nil {
+		if err := w.Write([]string{record.FirstName, record.LastName, record.Email, passwordExpirationString, expired, strconv.FormatBool(record.EnableUserPortalMultifactor), strconv.FormatBool(record.TotpEnabled)}); err != nil {
 			log.Fatalln("error writing record to csv:", err)
 		}
 	}

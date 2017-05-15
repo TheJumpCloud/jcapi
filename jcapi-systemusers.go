@@ -14,23 +14,25 @@ type JCUserAttribute struct {
 
 // If you add a field here make sure to add corresponding logic to getJCUserFieldsFromInterface
 type JCUser struct {
-	Id                     string    `json:"_id,omitempty"`
-	UserName               string    `json:"username,omitempty"`
-	FirstName              string    `json:"firstname,omitempty"`
-	LastName               string    `json:"lastname,omitempty"`
-	Email                  string    `json:"email"`
-	Password               string    `json:"password,omitempty"`
-	PasswordDate           string    `json:"password_date,omitempty"`
-	Activated              bool      `json:"activated"`
-	ActivationKey          string    `json:"activation_key"`
-	ExpiredWarned          bool      `json:"expired_warned"`
-	PasswordExpired        bool      `json:"password_expired"`
-	PasswordExpirationDate time.Time `json:"password_expiration_date,omitempty"`
-	PendingProvisioning    bool      `json:"pendingProvisioning,omitempty"`
-	Sudo                   bool      `json:"sudo"`
-	Uid                    string    `json:"unix_uid"`
-	Gid                    string    `json:"unix_guid"`
-	EnableManagedUid       bool      `json:"enable_managed_uid"`
+	Id                          string    `json:"_id,omitempty"`
+	UserName                    string    `json:"username,omitempty"`
+	FirstName                   string    `json:"firstname,omitempty"`
+	LastName                    string    `json:"lastname,omitempty"`
+	Email                       string    `json:"email"`
+	Password                    string    `json:"password,omitempty"`
+	PasswordDate                string    `json:"password_date,omitempty"`
+	Activated                   bool      `json:"activated"`
+	ActivationKey               string    `json:"activation_key"`
+	ExpiredWarned               bool      `json:"expired_warned"`
+	PasswordExpired             bool      `json:"password_expired"`
+	PasswordExpirationDate      time.Time `json:"password_expiration_date,omitempty"`
+	PendingProvisioning         bool      `json:"pendingProvisioning,omitempty"`
+	Sudo                        bool      `json:"sudo"`
+	Uid                         string    `json:"unix_uid"`
+	Gid                         string    `json:"unix_guid"`
+	EnableManagedUid            bool      `json:"enable_managed_uid"`
+	EnableUserPortalMultifactor bool      `json:"enable_user_portal_multifactor"`
+	TotpEnabled                 bool      `json:"totp_enabled"`
 
 	Attributes []JCUserAttribute `json:"attributes,omitempty"`
 
@@ -163,6 +165,14 @@ func getJCUserFieldsFromInterface(fields map[string]interface{}, user *JCUser) e
 		if err != nil {
 			return err
 		}
+	}
+  
+	if _, exists := fields["enable_user_portal_multifactor"]; exists {
+		user.EnableUserPortalMultifactor = fields["enable_user_portal_multifactor"].(bool)
+	}
+  
+	if _, exists := fields["totp_enabled"]; exists {
+		user.TotpEnabled = fields["totp_enabled"].(bool)
 	}
 
 	if attrs, exists := fields["attributes"]; exists {
