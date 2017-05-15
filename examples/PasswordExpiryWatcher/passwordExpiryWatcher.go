@@ -19,8 +19,8 @@ func main() {
 	var csvFile string
 
 	// Obtain the input parameters
-	flag.StringVar(&csvFile, "output", "o", "-output=<filename>")
-	flag.StringVar(&apiKey, "key", "k", "-key=<API-key-value>")
+	flag.StringVar(&csvFile, "output", "", "-output=<filename>")
+	flag.StringVar(&apiKey, "key", "", "-key=<API-key-value>")
 	flag.Parse()
 
 	if csvFile == "" || apiKey == "" {

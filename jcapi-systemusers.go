@@ -152,16 +152,10 @@ func getJCUserFieldsFromInterface(fields map[string]interface{}, user *JCUser) e
 		}
 	}
 	if _, exists := fields["enable_user_portal_multifactor"]; exists {
-		if value, err := strconv.ParseBool(fields["enable_user_portal_multifactor"]); err != nil {
-			return err
-		}
-		user.EnableUserPortalMultifactor = value
+		user.EnableUserPortalMultifactor = fields["enable_user_portal_multifactor"].(bool)
 	}
 	if _, exists := fields["totp_enabled"]; exists {
-		if value, err := strconv.ParseBool(fields["totp_enabled"]); err != nil {
-			return err
-		}
-		user.TotpEnabled = value
+		user.TotpEnabled = fields["totp_enabled"].(bool)
 	}
 	return nil
 }
