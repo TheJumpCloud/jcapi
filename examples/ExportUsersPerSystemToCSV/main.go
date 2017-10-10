@@ -2,45 +2,56 @@ package main
 
 import (
 	"encoding/csv"
+	"flag"
 	"fmt"
 	"log"
 	"os"
 
 	"github.com/TheJumpCloud/jcapi"
+	jcapiv2 "github.com/TheJumpCloud/jcapi-go/v2"
 )
 
 const (
-	apiUrl string = "https://console.jumpcloud.com/api"
+	apiUrlDefault string = "https://console.jumpcloud.com/api"
 )
 
-type systemMapToUserMap map[string]map[string]struct{}
-
 func main() {
-	apiKey := os.Getenv("JUMPCLOUD_APIKEY")
+	var apiKey string
+	var apiUrl string
+
+	// Obtain the input parameters: api key and url (if we want to override the default url)
+	flag.StringVar(&apiKey, "key", "", "-key=<API-key-value>")
+	flag.StringVar(&apiUrl, "url", apiUrlDefault, "-url=<jumpcloud-api-url>")
+	flag.Parse()
+
+	// if the api key isn't specified, try to obtain it through environment variable:
 	if apiKey == "" {
-		log.Fatalf("%s: Please run:\n\n\texport JUMPCLOUD_APIKEY=<your-JumpCloud-API-key>\n", os.Args[0])
+		apiKey = os.Getenv("JUMPCLOUD_APIKEY")
 	}
 
-	jc := jcapi.NewJCAPI(apiKey, apiUrl)
+	if apiKey == "" {
+		fmt.Println("Usage:")
+		fmt.Println("  -key=\"\": -key=<API-key-value>")
+		fmt.Println("  -url=\"\": -url=<jumpcloud-api-url> (optional)")
+		fmt.Println("You can also set the API key via the JUMPCLOUD_APIKEY environment variable:")
+		fmt.Println("Run: export JUMPCLOUD_APIKEY=<your-JumpCloud-API-key>")
+		return
+	}
 
-	tags, err := jc.GetAllTags()
+	// instantiate a new API v1 object for all v1 endpoints:
+	jcapiv1 := jcapi.NewJCAPI(apiKey, apiUrl)
+
+	// check if this org is on Groups or Tags:
+	isGroups, err := isGroupsOrg(apiUrl, apiKey)
 	if err != nil {
-		log.Fatalf("Could not get tags from your JumpCloud account, err='%s'", err)
+		log.Fatalf("Could not determine your org type, err='%s'\n", err)
 	}
-
-	systemUserMap := make(systemMapToUserMap)
-
-	// Walk the tags, and map each system to a map of users
-	for _, tag := range tags {
-		for _, systemId := range tag.Systems {
-			for _, userId := range tag.SystemUsers {
-				if systemUserMap[systemId] == nil {
-					systemUserMap[systemId] = make(map[string]struct{})
-				}
-
-				systemUserMap[systemId][userId] = struct{}{}
-			}
-		}
+	// if we're on a groups org, instantiate the systems API v2
+	// which we'll need  to list the users associated to a system:
+	var systemsAPIv2 *jcapiv2.SystemsApi
+	if isGroups {
+		systemsAPIv2 = jcapiv2.NewSystemsApiWithBasePath(apiUrl + "/v2")
+		systemsAPIv2.Configuration.APIKey["x-api-key"] = apiKey
 	}
 
 	csvWriter := csv.NewWriter(os.Stdout)
@@ -51,27 +62,59 @@ func main() {
 
 	csvWriter.Write(headers)
 
-	for systemId, userMap := range systemUserMap {
-		var system jcapi.JCSystem
+	// retrieve all the systems (note this is a v1 endpoint):
+	systems, err := jcapiv1.GetSystems(false)
+	if err != nil {
+		log.Fatalf("Could not get systems from your JumpCloud account, err='%s'\n", err)
+	}
 
-		system, err = jc.GetSystemById(systemId, false)
-		if err != nil {
-			log.Fatalf("Could not retrieve system for ID '%s', err='%s'", system.Id, err)
-		}
+	for _, system := range systems {
 
 		outLine := []string{system.Id, system.DisplayName, system.Hostname, fmt.Sprintf("%t", system.Active),
 			system.AmazonInstanceID, system.Os, system.Version, system.AgentVersion, system.Created,
 			system.LastContact}
 
-		for userId, _ := range userMap {
-			user, err := jc.GetSystemUserById(userId, false)
-			if err != nil {
-				log.Fatalf("Could not retrieve system user for ID '%s', err='%s'", userId, err)
-			}
+		var userIds []string
 
-			outLine = append(outLine, fmt.Sprintf("%s (%s)", user.UserName, user.Email))
+		if isGroups {
+			// This a groups org: use the /v2/systems/<system_id>/users endpoint
+			// to list all users associated with the given system:
+			var graphs []jcapiv2.GraphObjectWithPaths
+			for skip := 0; skip == 0 || len(graphs) == searchLimit; skip += searchSkipInterval {
+				graphs, _, err := systemsAPIv2.GraphSystemTraverseUser(system.Id, contentType, accept, int32(searchLimit), int32(skip))
+				if err != nil {
+					fmt.Printf("Could not retrieve users for system %s, err='%s'\n", system.Id, err)
+				} else {
+					// add the retrieved user Ids to our userIds list:
+					for _, graph := range graphs {
+						userIds = append(userIds, graph.Id)
+					}
+				}
+			}
+		} else {
+			// This is a Tags org: query the systems to user binding endpoint (/systems/<system_id>/users)
+			// This will return all the system-user bindings including
+			// those made via tags and via direct system-user binding
+			systemUserBindings, err := jcapiv1.GetSystemUserBindingsById(system.Id)
+			if err != nil {
+				fmt.Printf("Could not get system user bindings for system %s, err='%s'\n", system.Id, err)
+			} else {
+				// add the retrieved user Ids to our userIds list:
+				for _, systemUserBinding := range systemUserBindings {
+					userIds = append(userIds, systemUserBinding.UserId)
+				}
+			}
 		}
 
+		// get details for each bound user and append it to the current system:
+		for _, userId := range userIds {
+			user, err := jcapiv1.GetSystemUserById(userId, false)
+			if err != nil {
+				fmt.Printf("Could not retrieve system user for ID '%s', err='%s'\n", userId, err)
+			} else {
+				outLine = append(outLine, fmt.Sprintf("%s (%s)", user.UserName, user.Email))
+			}
+		}
 		csvWriter.Write(outLine)
 	}
 }
