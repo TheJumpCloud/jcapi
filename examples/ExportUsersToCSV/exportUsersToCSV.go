@@ -36,7 +36,7 @@ func main() {
 
 	// if the api key isn't specified, try to obtain it through environment variable:
 	if apiKey == "" {
-		apiKey = os.Getenv("JUMPCLOUD_APIKEY")
+		apiKey = os.Getenv(apiKeyEnvVariable)
 	}
 
 	if apiKey == "" {
@@ -57,7 +57,7 @@ func main() {
 	var usersAPIv2 *jcapiv2.UsersApi
 	if isGroups {
 		usersAPIv2 = jcapiv2.NewUsersApiWithBasePath(apiUrl + "/v2")
-		usersAPIv2.Configuration.APIKey["x-api-key"] = apiKey
+		usersAPIv2.Configuration.APIKey[apiKeyHeader] = apiKey
 	}
 
 	jcapiv1 := jcapi.NewJCAPI(apiKey, apiUrl)
@@ -106,11 +106,11 @@ func main() {
 
 				if err != nil {
 					fmt.Printf("Could not read groups for user %s, err='%s'\n", user.Id, err)
-				} else {
-					// output the ids for each user group we retrieved:
-					for _, graph := range graphs {
-						out(graph.Id)
-					}
+					continue
+				}
+				// output the ids for each user group we retrieved:
+				for _, graph := range graphs {
+					out(graph.Id)
 				}
 			}
 		} else {
