@@ -4,17 +4,19 @@ import jcapiv2 "github.com/TheJumpCloud/jcapi-go/v2"
 
 // the following constants are used for API v2 calls:
 const (
-	contentType        string = "application/json"
-	accept             string = "application/json"
-	searchLimit        int    = 100
-	searchSkipInterval int    = 100
+	apiKeyEnvVariable  = "JUMPCLOUD_APIKEY"
+	apiKeyHeader       = "x-api-key"
+	contentType        = "application/json"
+	accept             = "application/json"
+	searchLimit        = 100
+	searchSkipInterval = 100
 )
 
 // isGroupsOrg returns true if this org is groups enabled:
 func isGroupsOrg(urlBase string, apiKey string) (bool, error) {
 	// instantiate a new API object for User Groups:
 	userGroupsAPI := jcapiv2.NewUserGroupsApiWithBasePath(urlBase + "/v2")
-	userGroupsAPI.Configuration.APIKey["x-api-key"] = apiKey
+	userGroupsAPI.Configuration.APIKey[apiKeyHeader] = apiKey
 	// in order to check for groups support, we just query for the list of User groups
 	// (we just ask to retrieve 1) and check the response status code:
 	_, res, err := userGroupsAPI.GroupsUserList(contentType, accept, "", "", 1, 0, "")

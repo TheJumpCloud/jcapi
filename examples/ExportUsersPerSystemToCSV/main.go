@@ -26,7 +26,7 @@ func main() {
 
 	// if the api key isn't specified, try to obtain it through environment variable:
 	if apiKey == "" {
-		apiKey = os.Getenv("JUMPCLOUD_APIKEY")
+		apiKey = os.Getenv(apiKeyEnvVariable)
 	}
 
 	if apiKey == "" {
@@ -51,7 +51,7 @@ func main() {
 	var systemsAPIv2 *jcapiv2.SystemsApi
 	if isGroups {
 		systemsAPIv2 = jcapiv2.NewSystemsApiWithBasePath(apiUrl + "/v2")
-		systemsAPIv2.Configuration.APIKey["x-api-key"] = apiKey
+		systemsAPIv2.Configuration.APIKey[apiKeyHeader] = apiKey
 	}
 
 	csvWriter := csv.NewWriter(os.Stdout)
