@@ -278,6 +278,9 @@ func (jc JCAPI) GetSystemUserBindingsById(systemId string) (systemUserBindings [
 		var binding SystemUserBinding
 		// unmarshall the current raw json into a system user binding:
 		err = json.Unmarshal(*userBindingMap[userId], &binding)
+		if err != nil {
+			return systemUserBindings, fmt.Errorf("ERROR: Could not unmarshal buffer '%s', err='%s'", *userBindingMap[userId], err.Error())
+		}
 		// set the user id (obtained from the current key)
 		// since it isn't populated in the json response:
 		binding.UserId = userId
