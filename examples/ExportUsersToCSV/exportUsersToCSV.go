@@ -1,13 +1,17 @@
 package main
 
 import (
+	"flag"
 	"fmt"
-	"github.com/TheJumpCloud/jcapi"
+	"log"
 	"os"
+
+	"github.com/TheJumpCloud/jcapi"
+	jcapiv2 "github.com/TheJumpCloud/jcapi-go/v2"
 )
 
 const (
-	apiUrl string = "https://console.jumpcloud.com/api"
+	apiUrlDefault string = "https://console.jumpcloud.com/api"
 )
 
 func outFirst(data string) {
@@ -23,19 +27,45 @@ func endLine() {
 }
 
 func main() {
-	apiKey := os.Getenv("JUMPCLOUD_APIKEY")
+	var apiKey string
+	var apiUrl string
+	// Obtain the input parameters
+	flag.StringVar(&apiKey, "key", "", "-key=<API-key-value>")
+	flag.StringVar(&apiUrl, "url", apiUrlDefault, "-url=<jumpcloud-api-url>")
+	flag.Parse()
+
+	// if the api key isn't specified, try to obtain it through environment variable:
 	if apiKey == "" {
-		fmt.Printf("%s: Please run: export JUMPCLOUD_APIKEY=<your-JumpCloud-API-key>\n")
-		os.Exit(1)
+		apiKey = os.Getenv(apiKeyEnvVariable)
 	}
 
-	jc := jcapi.NewJCAPI(apiKey, apiUrl)
-
-	// Grab all system users with their tags
-	userList, err := jc.GetSystemUsers(true)
-	if err != nil {
-		fmt.Printf("Could not read system users, err='%s'\n", err)
+	if apiKey == "" {
+		fmt.Println("Usage:")
+		fmt.Println("  -key=\"\": -key=<API-key-value>")
+		fmt.Println("  -url=\"\": -url=<jumpcloud-api-url> (optional)")
+		fmt.Println("You can also set the API key via the JUMPCLOUD_APIKEY environment variable:")
+		fmt.Println("Run: export JUMPCLOUD_APIKEY=<your-JumpCloud-API-key>")
 		return
+	}
+
+	// check if the org is on tags or groups:
+	isGroups, err := isGroupsOrg(apiUrl, apiKey)
+	if err != nil {
+		log.Fatalf("Could not determine your org type, err='%s'\n", err)
+	}
+
+	var usersAPIv2 *jcapiv2.UsersApi
+	if isGroups {
+		usersAPIv2 = jcapiv2.NewUsersApiWithBasePath(apiUrl + "/v2")
+		usersAPIv2.Configuration.APIKey[apiKeyHeader] = apiKey
+	}
+
+	jcapiv1 := jcapi.NewJCAPI(apiKey, apiUrl)
+
+	// Grab all system users (with their tags if this is a Tags org):
+	userList, err := jcapiv1.GetSystemUsers(!isGroups)
+	if err != nil {
+		log.Fatalf("Could not read system users, err='%s'\n", err)
 	}
 
 	outFirst("Username")
@@ -47,7 +77,11 @@ func main() {
 	out("Activated")
 	out("PasswordExpired")
 	out("Sudo")
-	out("Tags")
+	if isGroups {
+		out("User Groups")
+	} else {
+		out("Tags")
+	}
 	endLine()
 
 	for _, user := range userList {
@@ -61,8 +95,29 @@ func main() {
 		out(fmt.Sprintf("%t", user.PasswordExpired))
 		out(fmt.Sprintf("%t", user.Sudo))
 
-		for _, tag := range user.Tags {
-			out(tag.Name)
+		if isGroups {
+			// For now, just list the User Groups this user is a member of.
+			// NOTE: there are many more associations for a user in a Groups org we may want to list here as well:
+			// Applications, Directories, GSuite, LDAP, O365, Systems, Radius Servers
+
+			var graphs []jcapiv2.GraphObjectWithPaths
+			for skip := 0; skip == 0 || len(graphs) == searchLimit; skip += searchSkipInterval {
+				graphs, _, err := usersAPIv2.GraphUserMemberOf(user.Id, contentType, accept, int32(searchLimit), int32(skip))
+
+				if err != nil {
+					log.Printf("Could not read groups for user %s, err='%s'\n", user.Id, err)
+					continue
+				}
+				// output the ids for each user group we retrieved:
+				for _, graph := range graphs {
+					out(graph.Id)
+				}
+			}
+		} else {
+			// this is a Tags org, just list the Tags we've already retrieved:
+			for _, tag := range user.Tags {
+				out(tag.Name)
+			}
 		}
 
 		endLine()

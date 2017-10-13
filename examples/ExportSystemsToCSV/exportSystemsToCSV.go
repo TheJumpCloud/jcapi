@@ -2,36 +2,104 @@ package main
 
 import (
 	"encoding/csv"
+	"flag"
 	"fmt"
-	"github.com/TheJumpCloud/jcapi"
+	"log"
 	"os"
+
+	"github.com/TheJumpCloud/jcapi"
+	jcapiv2 "github.com/TheJumpCloud/jcapi-go/v2"
 )
 
 const (
-	apiUrl string = "https://console.jumpcloud.com/api"
+	apiUrlDefault string = "https://console.jumpcloud.com/api"
 )
 
-func main() {
-	apiKey := os.Getenv("JUMPCLOUD_APIKEY")
-	if apiKey == "" {
-		fmt.Printf("%s: Please run:\n\n\texport JUMPCLOUD_APIKEY=<your-JumpCloud-API-key>\n", os.Args[0])
-		os.Exit(1)
+// getSystemGroupsforSystem retrieves the system groups the given system is a member of:
+func getSystemGroupsforSystem(systemsAPIv2 *jcapiv2.SystemsApi, systemGroupsAPIv2 *jcapiv2.SystemGroupsApi, systemId string) (systemGroups []string, err error) {
+
+	var graphs []jcapiv2.GraphObjectWithPaths
+	for skip := 0; skip == 0 || len(graphs) == searchLimit; skip += searchSkipInterval {
+		graphs, _, err := systemsAPIv2.GraphSystemMemberOf(systemId, contentType, accept, int32(searchLimit), int32(skip))
+		if err != nil {
+			return systemGroups, fmt.Errorf("Could not retrieve parent groups for system %s, err='%s'", systemId, err)
+		}
+
+		// add the retrieved system groups names to the list for the current system:
+		for _, graph := range graphs {
+			// get the details of the current system group:
+			systemGroup, _, err := systemGroupsAPIv2.GroupsSystemGet(graph.Id, contentType, accept)
+			if err != nil {
+				// just log a message and skip the system group if there's an error retrieving details:
+				log.Printf("Could not retrieve info for system group ID %s, err='%s'\n", graph.Id, err)
+				continue
+			}
+			systemGroups = append(systemGroups, systemGroup.Name)
+		}
 	}
 
-	jc := jcapi.NewJCAPI(apiKey, apiUrl)
+	return
+}
 
-	// Grab all systems with their tags
-	systems, err := jc.GetSystems(true)
-	if err != nil {
-		fmt.Printf("Could not read systems, err='%s'\n", err)
+func main() {
+	var apiKey string
+	var apiUrl string
+
+	// Obtain the input parameters: api key and url (if we want to override the default url)
+	flag.StringVar(&apiKey, "key", "", "-key=<API-key-value>")
+	flag.StringVar(&apiUrl, "url", apiUrlDefault, "-url=<jumpcloud-api-url>")
+	flag.Parse()
+
+	// if the api key isn't specified, try to obtain it through environment variable:
+	if apiKey == "" {
+		apiKey = os.Getenv("JUMPCLOUD_APIKEY")
+	}
+
+	if apiKey == "" {
+		fmt.Println("Usage:")
+		fmt.Println("  -key=\"\": -key=<API-key-value>")
+		fmt.Println("  -url=\"\": -url=<jumpcloud-api-url> (optional)")
+		fmt.Println("You can also set the API key via the JUMPCLOUD_APIKEY environment variable:")
+		fmt.Println("Run: export JUMPCLOUD_APIKEY=<your-JumpCloud-API-key>")
 		return
+	}
+
+	// check if this org is on Groups or Tags:
+	isGroups, err := isGroupsOrg(apiUrl, apiKey)
+	if err != nil {
+		log.Fatalf("Could not determine your org type, err='%s'\n", err)
+	}
+	// if we're on a groups org, instantiate API v2 objects for systems and system groups
+	// which we'll need  to list the parent system groups for a given system:
+	var systemsAPIv2 *jcapiv2.SystemsApi
+	var systemGroupsAPIv2 *jcapiv2.SystemGroupsApi
+	if isGroups {
+		systemsAPIv2 = jcapiv2.NewSystemsApiWithBasePath(apiUrl + "/v2")
+		systemsAPIv2.Configuration.APIKey[apiKeyHeader] = apiKey
+		systemGroupsAPIv2 = jcapiv2.NewSystemGroupsApiWithBasePath(apiUrl + "/v2")
+		systemGroupsAPIv2.Configuration.APIKey[apiKeyHeader] = apiKey
+	}
+
+	// instantiate a jcapi v1 object for all v1 endpoints:
+	jcapiv1 := jcapi.NewJCAPI(apiKey, apiUrl)
+
+	// Grab all systems (with their tags for a Tags)
+	systems, err := jcapiv1.GetSystems(!isGroups)
+	if err != nil {
+		log.Fatalf("Could not read systems, err='%s'\n", err)
 	}
 
 	csvWriter := csv.NewWriter(os.Stdout)
 	defer csvWriter.Flush()
 
 	headers := []string{"Id", "DisplayName", "HostName", "Active", "Instance ID", "OS", "OSVersion",
-		"AgentVersion", "CreatedDate", "LastContactDate", "Tags"}
+		"AgentVersion", "CreatedDate", "LastContactDate"}
+
+	if isGroups {
+		headers = append(headers, "SystemGroups")
+	} else {
+		headers = append(headers, "Tags")
+	}
 
 	csvWriter.Write(headers)
 
@@ -40,8 +108,23 @@ func main() {
 			system.AmazonInstanceID, system.Os, system.Version, system.AgentVersion, system.Created,
 			system.LastContact}
 
-		for _, tag := range system.Tags {
-			outLine = append(outLine, tag.Name)
+		if isGroups {
+			// for a Groups org, let's retrieve the system groups this system is a member of:
+			systemGroups, err := getSystemGroupsforSystem(systemsAPIv2, systemGroupsAPIv2, system.Id)
+			if err != nil {
+				// if we failed to retrieve the system groups for this system, jsut log a msg and skip system groups:
+				log.Printf("getSystemGroupsForSystem failed: %s", err)
+				// don't call continue here since we still want to print the current system's details...
+			} else {
+				outLine = append(outLine, systemGroups...)
+			}
+			// NOTE: there are more associations for a system in a Groups org we may want to list here as well:
+			// Policies, direct Users associations, etc
+		} else {
+			// for Tags orgs, we've already retrieved the list of tags in GetSystems:
+			for _, tag := range system.Tags {
+				outLine = append(outLine, tag.Name)
+			}
 		}
 
 		csvWriter.Write(outLine)

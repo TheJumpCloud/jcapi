@@ -46,6 +46,13 @@ type JCSystem struct {
 	Tags    []JCTag
 }
 
+// this struct describes a system user binding :
+type SystemUserBinding struct {
+	UserId   string   `json:"id,omitempty"`
+	Username string   `json:"username,omitempty"`
+	Tags     []string `json:"tags,omitempty"`
+}
+
 type JCSSHDParam struct {
 	Name  string `json:"name"`
 	Value string `json:"value"`
@@ -244,4 +251,42 @@ func (jc JCAPI) DeleteSystem(system JCSystem) JCError {
 	}
 
 	return nil
+}
+
+// GetSystemUserBindingsById returns all the user bindings for the given system Id:
+// this includes the direct system-user bindings as well as the bindings made via tags
+func (jc JCAPI) GetSystemUserBindingsById(systemId string) (systemUserBindings []SystemUserBinding, err JCError) {
+	url := fmt.Sprintf("%s/%s/systemusers", SYSTEMS_PATH, systemId)
+
+	buffer, err := jc.DoBytes(MapJCOpToHTTP(Read), url, []byte{})
+	if err != nil {
+		return systemUserBindings, fmt.Errorf("ERROR: Could not get system user bindings for system ID '%s', err='%s'", systemId, err.Error())
+	}
+
+	// The response from the /systems/<system_id>/users endpoint is a map of system-user bindings
+	// keyed on the user ID, so we can't unmarshall it in one operation:
+	// first parse the response into a map of generic json objects:
+	var userBindingMap map[string]*json.RawMessage
+	err = json.Unmarshal(buffer, &userBindingMap)
+
+	if err != nil {
+		return systemUserBindings, fmt.Errorf("ERROR: Could not unmarshal buffer '%s', err='%s'", buffer, err.Error())
+	}
+
+	// iterate over the map of user bindings:
+	for userId, _ := range userBindingMap {
+		var binding SystemUserBinding
+		// unmarshall the current raw json into a system user binding:
+		err = json.Unmarshal(*userBindingMap[userId], &binding)
+		if err != nil {
+			return systemUserBindings, fmt.Errorf("ERROR: Could not unmarshal buffer '%s', err='%s'", *userBindingMap[userId], err.Error())
+		}
+		// set the user id (obtained from the current key)
+		// since it isn't populated in the json response:
+		binding.UserId = userId
+		// append the current user binding to the array:
+		systemUserBindings = append(systemUserBindings, binding)
+	}
+
+	return
 }
