@@ -15,6 +15,40 @@ const (
 	apiUrlDefault string = "https://console.jumpcloud.com/api"
 )
 
+// getUsersBoundToSystemV1 returns the list of users associated with the given system
+// for a Tags org using the /systems/<system_id>/users endpoint:
+// This endpoint will return all the system-user bindings including those made
+// via tags and via direct system-user binding
+func getUsersBoundToSystemV1(jcapiv1 *jcapi.JCAPI, systemId string) (userIds []string, err error) {
+
+	systemUserBindings, err := jcapiv1.GetSystemUserBindingsById(systemId)
+	if err != nil {
+		return userIds, fmt.Errorf("Could not get system user bindings for system %s, err='%s'\n", systemId, err)
+	}
+	// add the retrieved user Ids to our userIds list:
+	for _, systemUserBinding := range systemUserBindings {
+		userIds = append(userIds, systemUserBinding.UserId)
+	}
+	return
+}
+
+// getUsersBoundToSystemV2 returns the list of users associated with the given system
+// for a Groups org using the /v2/systems/<system_id>/users endpoint:
+func getUsersBoundToSystemV2(systemsAPIv2 *jcapiv2.SystemsApi, systemId string) (userIds []string, err error) {
+	var graphs []jcapiv2.GraphObjectWithPaths
+	for skip := 0; skip == 0 || len(graphs) == searchLimit; skip += searchSkipInterval {
+		graphs, _, err := systemsAPIv2.GraphSystemTraverseUser(systemId, contentType, accept, int32(searchLimit), int32(skip))
+		if err != nil {
+			return userIds, fmt.Errorf("Could not retrieve users for system %s, err='%s'\n", systemId, err)
+		}
+		// add the retrieved user Ids to our userIds list:
+		for _, graph := range graphs {
+			userIds = append(userIds, graph.Id)
+		}
+	}
+	return
+}
+
 func main() {
 	var apiKey string
 	var apiUrl string
@@ -77,33 +111,17 @@ func main() {
 		var userIds []string
 
 		if isGroups {
-			// This a groups org: use the /v2/systems/<system_id>/users endpoint
-			// to list all users associated with the given system:
-			var graphs []jcapiv2.GraphObjectWithPaths
-			for skip := 0; skip == 0 || len(graphs) == searchLimit; skip += searchSkipInterval {
-				graphs, _, err := systemsAPIv2.GraphSystemTraverseUser(system.Id, contentType, accept, int32(searchLimit), int32(skip))
-				if err != nil {
-					fmt.Printf("Could not retrieve users for system %s, err='%s'\n", system.Id, err)
-				} else {
-					// add the retrieved user Ids to our userIds list:
-					for _, graph := range graphs {
-						userIds = append(userIds, graph.Id)
-					}
-				}
-			}
+			userIds, err = getUsersBoundToSystemV2(systemsAPIv2, system.Id)
 		} else {
-			// This is a Tags org: query the systems to user binding endpoint (/systems/<system_id>/users)
-			// This will return all the system-user bindings including
-			// those made via tags and via direct system-user binding
-			systemUserBindings, err := jcapiv1.GetSystemUserBindingsById(system.Id)
-			if err != nil {
-				fmt.Printf("Could not get system user bindings for system %s, err='%s'\n", system.Id, err)
-			} else {
-				// add the retrieved user Ids to our userIds list:
-				for _, systemUserBinding := range systemUserBindings {
-					userIds = append(userIds, systemUserBinding.UserId)
-				}
-			}
+			userIds, err = getUsersBoundToSystemV1(&jcapiv1, system.Id)
+		}
+
+		if err != nil {
+			// if we fail to retrieve users for the current system, log a msg:
+			fmt.Printf("Failed to retrieve system user bindings: err='%s'\n", err)
+			// make sure we still write the system details before skipping:
+			csvWriter.Write(outLine)
+			continue
 		}
 
 		// get details for each bound user and append it to the current system:
