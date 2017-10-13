@@ -118,7 +118,7 @@ func main() {
 
 		if err != nil {
 			// if we fail to retrieve users for the current system, log a msg:
-			fmt.Printf("Failed to retrieve system user bindings: err='%s'\n", err)
+			log.Printf("Failed to retrieve system user bindings: err='%s'\n", err)
 			// make sure we still write the system details before skipping:
 			csvWriter.Write(outLine)
 			continue
@@ -128,7 +128,7 @@ func main() {
 		for _, userId := range userIds {
 			user, err := jcapiv1.GetSystemUserById(userId, false)
 			if err != nil {
-				fmt.Printf("Could not retrieve system user for ID '%s', err='%s'\n", userId, err)
+				log.Printf("Could not retrieve system user for ID '%s', err='%s'\n", userId, err)
 			} else {
 				outLine = append(outLine, fmt.Sprintf("%s (%s)", user.UserName, user.Email))
 			}

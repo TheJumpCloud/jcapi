@@ -31,7 +31,7 @@ func getSystemGroupsforSystem(systemsAPIv2 *jcapiv2.SystemsApi, systemGroupsAPIv
 			systemGroup, _, err := systemGroupsAPIv2.GroupsSystemGet(graph.Id, contentType, accept)
 			if err != nil {
 				// just log a message and skip the system group if there's an error retrieving details:
-				fmt.Printf("Could not retrieve info for system group ID %s, err='%s'\n", graph.Id, err)
+				log.Printf("Could not retrieve info for system group ID %s, err='%s'\n", graph.Id, err)
 				continue
 			}
 			systemGroups = append(systemGroups, systemGroup.Name)
@@ -113,7 +113,7 @@ func main() {
 			systemGroups, err := getSystemGroupsforSystem(systemsAPIv2, systemGroupsAPIv2, system.Id)
 			if err != nil {
 				// if we failed to retrieve the system groups for this system, jsut log a msg and skip system groups:
-				fmt.Printf("getSystemGroupsForSystem failed: %s", err)
+				log.Printf("getSystemGroupsForSystem failed: %s", err)
 				// don't call continue here since we still want to print the current system's details...
 			} else {
 				outLine = append(outLine, systemGroups...)

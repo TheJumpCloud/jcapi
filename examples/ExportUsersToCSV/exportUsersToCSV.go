@@ -105,7 +105,7 @@ func main() {
 				graphs, _, err := usersAPIv2.GraphUserMemberOf(user.Id, contentType, accept, int32(searchLimit), int32(skip))
 
 				if err != nil {
-					fmt.Printf("Could not read groups for user %s, err='%s'\n", user.Id, err)
+					log.Printf("Could not read groups for user %s, err='%s'\n", user.Id, err)
 					continue
 				}
 				// output the ids for each user group we retrieved:
