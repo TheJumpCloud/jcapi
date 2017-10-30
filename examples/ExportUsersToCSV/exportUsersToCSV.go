@@ -55,22 +55,23 @@ func main() {
 		log.Fatalf("Could not determine your org type, err='%s'\n", err)
 	}
 
-	var clientV2 *jcapiv2.APIClient
+	var apiClientV2 *jcapiv2.APIClient
 	var auth context.Context
 	if isGroups {
 		// instantiate API client v2:
-		clientV2 = jcapiv2.NewAPIClient(jcapiv2.NewConfiguration())
-		clientV2.ChangeBasePath(apiUrl + "/v2")
+		apiClientV2 = jcapiv2.NewAPIClient(jcapiv2.NewConfiguration())
+		apiClientV2.ChangeBasePath(apiUrl + "/v2")
 		// set up the API key via context:
 		auth = context.WithValue(context.TODO(), jcapiv2.ContextAPIKey, jcapiv2.APIKey{
 			Key: apiKey,
 		})
 	}
 
-	jcapiv1 := jcapi.NewJCAPI(apiKey, apiUrl)
+	// instantiate the API client v1:
+	apiClientV1 := jcapi.NewJCAPI(apiKey, apiUrl)
 
 	// Grab all system users (with their tags if this is a Tags org):
-	userList, err := jcapiv1.GetSystemUsers(!isGroups)
+	userList, err := apiClientV1.GetSystemUsers(!isGroups)
 	if err != nil {
 		log.Fatalf("Could not read system users, err='%s'\n", err)
 	}
@@ -114,7 +115,7 @@ func main() {
 					"limit": int32(searchLimit),
 					"skip":  int32(skip),
 				}
-				graphs, _, err := clientV2.UsersApi.GraphUserMemberOf(auth, user.Id, contentType, accept, optionals)
+				graphs, _, err := apiClientV2.UsersApi.GraphUserMemberOf(auth, user.Id, contentType, accept, optionals)
 
 				if err != nil {
 					log.Printf("Could not read groups for user %s, err='%s'\n", user.Id, err)
