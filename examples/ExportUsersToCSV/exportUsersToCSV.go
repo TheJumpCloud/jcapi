@@ -55,10 +55,10 @@ func main() {
 		log.Fatalf("Could not determine your org type, err='%s'\n", err)
 	}
 
+	// if we're on a groups org, instantiate API client v2:
 	var apiClientV2 *jcapiv2.APIClient
 	var auth context.Context
 	if isGroups {
-		// instantiate API client v2:
 		apiClientV2 = jcapiv2.NewAPIClient(jcapiv2.NewConfiguration())
 		apiClientV2.ChangeBasePath(apiUrl + "/v2")
 		// set up the API key via context:
