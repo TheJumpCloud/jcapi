@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log"
@@ -54,10 +55,16 @@ func main() {
 		log.Fatalf("Could not determine your org type, err='%s'\n", err)
 	}
 
-	var usersAPIv2 *jcapiv2.UsersApi
+	var clientV2 *jcapiv2.APIClient
+	var auth context.Context
 	if isGroups {
-		usersAPIv2 = jcapiv2.NewUsersApiWithBasePath(apiUrl + "/v2")
-		usersAPIv2.Configuration.APIKey[apiKeyHeader] = apiKey
+		// instantiate API client v2:
+		clientV2 = jcapiv2.NewAPIClient(jcapiv2.NewConfiguration())
+		clientV2.ChangeBasePath(apiUrl + "/v2")
+		// set up the API key via context:
+		auth = context.WithValue(context.TODO(), jcapiv2.ContextAPIKey, jcapiv2.APIKey{
+			Key: apiKey,
+		})
 	}
 
 	jcapiv1 := jcapi.NewJCAPI(apiKey, apiUrl)
@@ -102,7 +109,12 @@ func main() {
 
 			var graphs []jcapiv2.GraphObjectWithPaths
 			for skip := 0; skip == 0 || len(graphs) == searchLimit; skip += searchSkipInterval {
-				graphs, _, err := usersAPIv2.GraphUserMemberOf(user.Id, contentType, accept, int32(searchLimit), int32(skip))
+				// set up optional parameters:
+				optionals := map[string]interface{}{
+					"limit": int32(searchLimit),
+					"skip":  int32(skip),
+				}
+				graphs, _, err := clientV2.UsersApi.GraphUserMemberOf(auth, user.Id, contentType, accept, optionals)
 
 				if err != nil {
 					log.Printf("Could not read groups for user %s, err='%s'\n", user.Id, err)
