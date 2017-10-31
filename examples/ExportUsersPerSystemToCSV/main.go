@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/csv"
 	"flag"
 	"fmt"
@@ -19,9 +20,9 @@ const (
 // for a Tags org using the /systems/<system_id>/users endpoint:
 // This endpoint will return all the system-user bindings including those made
 // via tags and via direct system-user binding
-func getUsersBoundToSystemV1(jcapiv1 *jcapi.JCAPI, systemId string) (userIds []string, err error) {
+func getUsersBoundToSystemV1(apiClientV1 *jcapi.JCAPI, systemId string) (userIds []string, err error) {
 
-	systemUserBindings, err := jcapiv1.GetSystemUserBindingsById(systemId)
+	systemUserBindings, err := apiClientV1.GetSystemUserBindingsById(systemId)
 	if err != nil {
 		return userIds, fmt.Errorf("Could not get system user bindings for system %s, err='%s'\n", systemId, err)
 	}
@@ -34,10 +35,15 @@ func getUsersBoundToSystemV1(jcapiv1 *jcapi.JCAPI, systemId string) (userIds []s
 
 // getUsersBoundToSystemV2 returns the list of users associated with the given system
 // for a Groups org using the /v2/systems/<system_id>/users endpoint:
-func getUsersBoundToSystemV2(systemsAPIv2 *jcapiv2.SystemsApi, systemId string) (userIds []string, err error) {
+func getUsersBoundToSystemV2(apiClientV2 *jcapiv2.APIClient, auth context.Context, systemId string) (userIds []string, err error) {
 	var graphs []jcapiv2.GraphObjectWithPaths
 	for skip := 0; skip == 0 || len(graphs) == searchLimit; skip += searchSkipInterval {
-		graphs, _, err := systemsAPIv2.GraphSystemTraverseUser(systemId, contentType, accept, int32(searchLimit), int32(skip))
+		// set up optional parameters:
+		optionals := map[string]interface{}{
+			"limit": int32(searchLimit),
+			"skip":  int32(skip),
+		}
+		graphs, _, err := apiClientV2.SystemsApi.GraphSystemTraverseUser(auth, systemId, contentType, accept, optionals)
 		if err != nil {
 			return userIds, fmt.Errorf("Could not retrieve users for system %s, err='%s'\n", systemId, err)
 		}
@@ -73,19 +79,24 @@ func main() {
 	}
 
 	// instantiate a new API v1 object for all v1 endpoints:
-	jcapiv1 := jcapi.NewJCAPI(apiKey, apiUrl)
+	apiClientV1 := jcapi.NewJCAPI(apiKey, apiUrl)
 
 	// check if this org is on Groups or Tags:
 	isGroups, err := isGroupsOrg(apiUrl, apiKey)
 	if err != nil {
 		log.Fatalf("Could not determine your org type, err='%s'\n", err)
 	}
-	// if we're on a groups org, instantiate the systems API v2
-	// which we'll need  to list the users associated to a system:
-	var systemsAPIv2 *jcapiv2.SystemsApi
+	// if we're on a groups org, instantiate the API client v2:
+	var apiClientV2 *jcapiv2.APIClient
+	var auth context.Context
 	if isGroups {
-		systemsAPIv2 = jcapiv2.NewSystemsApiWithBasePath(apiUrl + "/v2")
-		systemsAPIv2.Configuration.APIKey[apiKeyHeader] = apiKey
+		// instantiate API client v2:
+		apiClientV2 = jcapiv2.NewAPIClient(jcapiv2.NewConfiguration())
+		apiClientV2.ChangeBasePath(apiUrl + "/v2")
+		// set up the API key via context:
+		auth = context.WithValue(context.TODO(), jcapiv2.ContextAPIKey, jcapiv2.APIKey{
+			Key: apiKey,
+		})
 	}
 
 	csvWriter := csv.NewWriter(os.Stdout)
@@ -97,7 +108,7 @@ func main() {
 	csvWriter.Write(headers)
 
 	// retrieve all the systems (note this is a v1 endpoint):
-	systems, err := jcapiv1.GetSystems(false)
+	systems, err := apiClientV1.GetSystems(false)
 	if err != nil {
 		log.Fatalf("Could not get systems from your JumpCloud account, err='%s'\n", err)
 	}
@@ -111,9 +122,9 @@ func main() {
 		var userIds []string
 
 		if isGroups {
-			userIds, err = getUsersBoundToSystemV2(systemsAPIv2, system.Id)
+			userIds, err = getUsersBoundToSystemV2(apiClientV2, auth, system.Id)
 		} else {
-			userIds, err = getUsersBoundToSystemV1(&jcapiv1, system.Id)
+			userIds, err = getUsersBoundToSystemV1(&apiClientV1, system.Id)
 		}
 
 		if err != nil {
@@ -126,7 +137,7 @@ func main() {
 
 		// get details for each bound user and append it to the current system:
 		for _, userId := range userIds {
-			user, err := jcapiv1.GetSystemUserById(userId, false)
+			user, err := apiClientV1.GetSystemUserById(userId, false)
 			if err != nil {
 				log.Printf("Could not retrieve system user for ID '%s', err='%s'\n", userId, err)
 			} else {

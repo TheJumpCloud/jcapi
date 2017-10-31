@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/csv"
 	"flag"
 	"fmt"
@@ -16,11 +17,16 @@ const (
 )
 
 // getSystemGroupsforSystem retrieves the system groups the given system is a member of:
-func getSystemGroupsforSystem(systemsAPIv2 *jcapiv2.SystemsApi, systemGroupsAPIv2 *jcapiv2.SystemGroupsApi, systemId string) (systemGroups []string, err error) {
+func getSystemGroupsforSystem(apiClientV2 *jcapiv2.APIClient, auth context.Context, systemId string) (systemGroups []string, err error) {
 
 	var graphs []jcapiv2.GraphObjectWithPaths
 	for skip := 0; skip == 0 || len(graphs) == searchLimit; skip += searchSkipInterval {
-		graphs, _, err := systemsAPIv2.GraphSystemMemberOf(systemId, contentType, accept, int32(searchLimit), int32(skip))
+		// set up optional parameters:
+		optionals := map[string]interface{}{
+			"limit": int32(searchLimit),
+			"skip":  int32(skip),
+		}
+		graphs, _, err := apiClientV2.SystemsApi.GraphSystemMemberOf(auth, systemId, contentType, accept, optionals)
 		if err != nil {
 			return systemGroups, fmt.Errorf("Could not retrieve parent groups for system %s, err='%s'", systemId, err)
 		}
@@ -28,7 +34,7 @@ func getSystemGroupsforSystem(systemsAPIv2 *jcapiv2.SystemsApi, systemGroupsAPIv
 		// add the retrieved system groups names to the list for the current system:
 		for _, graph := range graphs {
 			// get the details of the current system group:
-			systemGroup, _, err := systemGroupsAPIv2.GroupsSystemGet(graph.Id, contentType, accept)
+			systemGroup, _, err := apiClientV2.SystemGroupsApi.GroupsSystemGet(auth, graph.Id, contentType, accept)
 			if err != nil {
 				// just log a message and skip the system group if there's an error retrieving details:
 				log.Printf("Could not retrieve info for system group ID %s, err='%s'\n", graph.Id, err)
@@ -69,22 +75,23 @@ func main() {
 	if err != nil {
 		log.Fatalf("Could not determine your org type, err='%s'\n", err)
 	}
-	// if we're on a groups org, instantiate API v2 objects for systems and system groups
-	// which we'll need  to list the parent system groups for a given system:
-	var systemsAPIv2 *jcapiv2.SystemsApi
-	var systemGroupsAPIv2 *jcapiv2.SystemGroupsApi
+	// if we're on a groups org, instantiate API client v2:
+	var apiClientV2 *jcapiv2.APIClient
+	var auth context.Context
 	if isGroups {
-		systemsAPIv2 = jcapiv2.NewSystemsApiWithBasePath(apiUrl + "/v2")
-		systemsAPIv2.Configuration.APIKey[apiKeyHeader] = apiKey
-		systemGroupsAPIv2 = jcapiv2.NewSystemGroupsApiWithBasePath(apiUrl + "/v2")
-		systemGroupsAPIv2.Configuration.APIKey[apiKeyHeader] = apiKey
+		apiClientV2 = jcapiv2.NewAPIClient(jcapiv2.NewConfiguration())
+		apiClientV2.ChangeBasePath(apiUrl + "/v2")
+		// set up the API key via context:
+		auth = context.WithValue(context.TODO(), jcapiv2.ContextAPIKey, jcapiv2.APIKey{
+			Key: apiKey,
+		})
 	}
 
-	// instantiate a jcapi v1 object for all v1 endpoints:
-	jcapiv1 := jcapi.NewJCAPI(apiKey, apiUrl)
+	// instantiate an API client v1 for all v1 endpoints:
+	apiClientV1 := jcapi.NewJCAPI(apiKey, apiUrl)
 
 	// Grab all systems (with their tags for a Tags)
-	systems, err := jcapiv1.GetSystems(!isGroups)
+	systems, err := apiClientV1.GetSystems(!isGroups)
 	if err != nil {
 		log.Fatalf("Could not read systems, err='%s'\n", err)
 	}
@@ -110,7 +117,7 @@ func main() {
 
 		if isGroups {
 			// for a Groups org, let's retrieve the system groups this system is a member of:
-			systemGroups, err := getSystemGroupsforSystem(systemsAPIv2, systemGroupsAPIv2, system.Id)
+			systemGroups, err := getSystemGroupsforSystem(apiClientV2, auth, system.Id)
 			if err != nil {
 				// if we failed to retrieve the system groups for this system, jsut log a msg and skip system groups:
 				log.Printf("getSystemGroupsForSystem failed: %s", err)
