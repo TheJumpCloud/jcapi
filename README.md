@@ -1,6 +1,13 @@
 jcapi
 =====
 
+This Repo only supports JumpCloud's V1 API endpoints. For V2 Support please see our other repos found here:
+
+https://github.com/TheJumpCloud/jcapi-python
+https://github.com/TheJumpCloud/jcapi-go
+https://github.com/TheJumpCloud/jcapi-ruby
+
+
 *JumpCloud's Go (golang) REST API SDK (BETA)*
 Copyright (C) 2015 JumpCloud
 
@@ -17,6 +24,3 @@ This API exposes several JumpCloud REST APIs:
  * Tags - (see https://github.com/TheJumpCloud/JumpCloudAPI#tags)
  * Authentication and Authorization - (see http://support.jumpcloud.com/knowledgebase/articles/455570)
 
-Special Thanks
-==============
-Graham Green (grahamgreen@clearcareonline.com) - for adding support for Systems! Also, see https://github.com/clearcare/jumpcloud for a cool binary wrapper that lets you do things similar to the JumpCloud Ruby gem!
