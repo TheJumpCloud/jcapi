@@ -3,9 +3,9 @@ jcapi
 
 This Repo only supports JumpCloud's V1 API endpoints. For V2 Support please see our other repos found here:
 
-https://github.com/TheJumpCloud/jcapi-python
-https://github.com/TheJumpCloud/jcapi-go
-https://github.com/TheJumpCloud/jcapi-ruby
+* https://github.com/TheJumpCloud/jcapi-python
+* https://github.com/TheJumpCloud/jcapi-go
+* https://github.com/TheJumpCloud/jcapi-ruby
 
 
 *JumpCloud's Go (golang) REST API SDK (BETA)*
