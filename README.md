@@ -1,7 +1,7 @@
 jcapi
 =====
 
-This Repo only supports JumpCloud's V1 API endpoints. For V2 Support please see our this repo found here: https://github.com/TheJumpCloud/jcapi-go
+This Repository only supports JumpCloud's V1 API endpoints. For V2 Support please refer to [jcapi-go](https://github.com/TheJumpCloud/jcapi-go).
 
 
 
