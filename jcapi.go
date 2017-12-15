@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"reflect"
@@ -161,7 +162,13 @@ func (jc JCAPI) Do(op, url string, data []byte) (interface{}, JCError) {
 
 	client := &http.Client{}
 
-	req, err := http.NewRequest(op, fullUrl, bytes.NewReader(data))
+	// if there is no data, we should send a nil body, not an empty one:
+	var body io.Reader
+	if len(data) > 0 {
+		body = bytes.NewReader(data)
+	}
+
+	req, err := http.NewRequest(op, fullUrl, body)
 	if err != nil {
 		return returnVal, fmt.Errorf("ERROR: Could not build search request: '%s'", err)
 	}
@@ -198,7 +205,14 @@ func (jc JCAPI) DoBytes(op, urlQuery string, data []byte) ([]byte, JCError) {
 
 	client := &http.Client{}
 
-	req, err := http.NewRequest(op, fullUrl, bytes.NewReader(data))
+	// if there is no data, we should send a nil body, not an empty one:
+	var body io.Reader
+	if len(data) > 0 {
+		body = bytes.NewReader(data)
+	}
+
+	req, err := http.NewRequest(op, fullUrl, body)
+
 	if err != nil {
 		return nil, fmt.Errorf("ERROR: Could not build search request: '%s'", err)
 	}
