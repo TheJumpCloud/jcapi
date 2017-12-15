@@ -27,7 +27,7 @@ func (e JCRadiusServer) ToString() string {
 }
 
 func (jc JCAPI) GetAllRadiusServers() (radiusServers []JCRadiusServer, err JCError) {
-	result, err := jc.DoBytes(MapJCOpToHTTP(Read), RADIUS_SERVERS_PATH, []byte{})
+	result, err := jc.DoBytes(MapJCOpToHTTP(Read), RADIUS_SERVERS_PATH, nil)
 	if err != nil {
 		err = fmt.Errorf("ERROR: Could not list RADIUS servers, err='%s'", err)
 		return

@@ -59,7 +59,7 @@ func getJCCommandResultsFromResults(result []byte) (commands []JCCommandResult, 
 }
 
 func (jc JCAPI) GetCommandResultDetailsById(id string) (commandResult JCCommandResult, err JCError) {
-	buffer, err := jc.DoBytes(MapJCOpToHTTP(Read), COMMAND_RESULTS_PATH+"/"+id, []byte{})
+	buffer, err := jc.DoBytes(MapJCOpToHTTP(Read), COMMAND_RESULTS_PATH+"/"+id, nil)
 	if err != nil {
 		err = fmt.Errorf("Could not get command result details for ID '%s', err='%s'", id, err.Error())
 	}
@@ -85,7 +85,7 @@ func (jc JCAPI) GetCommandResultsByName(name string) (commandResultList []JCComm
 		urlQuery := fmt.Sprintf("%s?skip=%d&limit=%d&sort=-requestTime&%s%s&%s=%s", COMMAND_RESULTS_PATH, skip, searchLimit,
 			url.QueryEscape(searchString1), searchString2, url.QueryEscape(searchString3), url.QueryEscape(name))
 
-		buffer, err2 := jc.DoBytes(MapJCOpToHTTP(Read), urlQuery, []byte{})
+		buffer, err2 := jc.DoBytes(MapJCOpToHTTP(Read), urlQuery, nil)
 		if err2 != nil {
 			return nil, fmt.Errorf("ERROR: Get CommandResults to JumpCloud failed, err='%s'", err2)
 		}
@@ -141,7 +141,7 @@ func GetInterfaceArrayFromJCCommandResults(commandResults []JCCommandResult) (in
 func (jc JCAPI) DeleteCommandResult(id string) (err JCError) {
 	url := fmt.Sprintf("%s/%s", COMMAND_RESULTS_PATH, id)
 
-	_, err2 := jc.DoBytes(MapJCOpToHTTP(Delete), url, []byte{})
+	_, err2 := jc.DoBytes(MapJCOpToHTTP(Delete), url, nil)
 	if err2 != nil {
 		return fmt.Errorf("ERROR: DELETE CommandResults failed, err='%s'", err2)
 	}

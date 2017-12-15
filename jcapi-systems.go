@@ -145,7 +145,7 @@ func (jc JCAPI) GetSystemByHostName(hostname string, withTags bool) ([]JCSystem,
 func (jc JCAPI) GetSystemById(systemId string, withTags bool) (system JCSystem, err JCError) {
 	url := fmt.Sprintf("%s/%s", SYSTEMS_PATH, systemId)
 
-	buffer, err := jc.DoBytes(MapJCOpToHTTP(Read), url, []byte{})
+	buffer, err := jc.DoBytes(MapJCOpToHTTP(Read), url, nil)
 	if err != nil {
 		return system, fmt.Errorf("ERROR: Could not get system by ID '%s', err='%s'", systemId, err.Error())
 	}
@@ -175,7 +175,7 @@ func (jc JCAPI) GetSystems(withTags bool) (systems []JCSystem, err JCError) {
 	for skip := 0; skip == 0 || len(systems) == searchLimit; skip += searchSkipInterval {
 		url := fmt.Sprintf("%s?sort=hostname&skip=%d&limit=%d", SYSTEMS_PATH, skip, searchLimit)
 
-		buffer, err2 := jc.DoBytes(MapJCOpToHTTP(Read), url, []byte{})
+		buffer, err2 := jc.DoBytes(MapJCOpToHTTP(Read), url, nil)
 		if err2 != nil {
 			return nil, fmt.Errorf("ERROR: Get to JumpCloud failed, err='%s'", err2)
 		}
@@ -258,7 +258,7 @@ func (jc JCAPI) DeleteSystem(system JCSystem) JCError {
 func (jc JCAPI) GetSystemUserBindingsById(systemId string) (systemUserBindings []SystemUserBinding, err JCError) {
 	url := fmt.Sprintf("%s/%s/systemusers", SYSTEMS_PATH, systemId)
 
-	buffer, err := jc.DoBytes(MapJCOpToHTTP(Read), url, []byte{})
+	buffer, err := jc.DoBytes(MapJCOpToHTTP(Read), url, nil)
 	if err != nil {
 		return systemUserBindings, fmt.Errorf("ERROR: Could not get system user bindings for system ID '%s', err='%s'", systemId, err.Error())
 	}
