@@ -77,7 +77,7 @@ func getJCTagsFromResults(result []byte) (tags []JCTag, err JCError) {
 
 func (jc JCAPI) GetTagsByUrl(urlPath string) (tagList []JCTag, err JCError) {
 
-	result, err := jc.DoBytes(MapJCOpToHTTP(Read), urlPath, []byte{})
+	result, err := jc.DoBytes(MapJCOpToHTTP(Read), urlPath, nil)
 	if err != nil {
 		return nil, fmt.Errorf("ERROR: Get tags from JumpCloud failed with urlPath='%s', err='%s'", urlPath, err.Error())
 	}

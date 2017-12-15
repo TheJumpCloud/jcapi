@@ -60,7 +60,7 @@ func (e JCIDSource) marshalJSON(writeActive bool) ([]byte, error) {
 }
 
 func (jc JCAPI) GetAllIDSources() (idSources []JCIDSource, err JCError) {
-	result, err := jc.DoBytes(MapJCOpToHTTP(Read), IDSOURCES_PATH, []byte{})
+	result, err := jc.DoBytes(MapJCOpToHTTP(Read), IDSOURCES_PATH, nil)
 	if err != nil {
 		return idSources, fmt.Errorf("ERROR: Could not list ID sources, err='%s'", err)
 	}

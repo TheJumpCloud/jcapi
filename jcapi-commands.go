@@ -59,12 +59,11 @@ func getJCCommandsFromResults(result []byte) (commands []JCCommand, err JCError)
 }
 
 func (jc JCAPI) GetAllCommands() (commandList []JCCommand, err JCError) {
-	var empty []byte
 
 	for skip := 0; skip == 0 || len(commandList) == searchLimit; skip += searchSkipInterval {
 		url := fmt.Sprintf("%s?sort=hostname&skip=%d&limit=%d", COMMAND_PATH, skip, searchLimit)
 
-		jcSysRec, err2 := jc.DoBytes(MapJCOpToHTTP(Read), url, empty)
+		jcSysRec, err2 := jc.DoBytes(MapJCOpToHTTP(Read), url, nil)
 
 		if err2 != nil {
 			return nil, fmt.Errorf("ERROR: Get commands to JumpCloud failed, err='%s'", err2)
