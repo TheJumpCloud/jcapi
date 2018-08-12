@@ -2,6 +2,7 @@ package jcapi
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -31,6 +32,7 @@ const (
 type JCAPI struct {
 	ApiKey  string
 	UrlBase string
+	ctx     context.Context
 }
 
 const (
@@ -56,10 +58,19 @@ func (e *errorString) Error() string {
 	return e.s
 }
 
+func NewJCAPIWithContext(ctx context.Context, apiKey string, urlBase string) JCAPI {
+	return JCAPI{
+		ApiKey:  apiKey,
+		UrlBase: urlBase,
+		ctx:     ctx,
+	}
+}
+
 func NewJCAPI(apiKey string, urlBase string) JCAPI {
 	return JCAPI{
 		ApiKey:  apiKey,
 		UrlBase: urlBase,
+		ctx:     context.Background(),
 	}
 }
 
@@ -160,7 +171,7 @@ func (jc JCAPI) Do(op, url string, data []byte) (interface{}, JCError) {
 
 	fullUrl := jc.UrlBase + url
 
-	client := &http.Client{}
+	client := HTTPClientFn(jc.ctx)
 
 	// if there is no data, we should send a nil body, not an empty one:
 	var body io.Reader
@@ -203,7 +214,7 @@ func (jc JCAPI) DoBytes(op, urlQuery string, data []byte) ([]byte, JCError) {
 
 	fullUrl := jc.UrlBase + urlQuery
 
-	client := &http.Client{}
+	client := HTTPClientFn(jc.ctx)
 
 	// if there is no data, we should send a nil body, not an empty one:
 	var body io.Reader
