@@ -1,9 +1,6 @@
 jcapi
 =====
-
-This Repository only supports JumpCloud's V1 API endpoints. For V2 Support please refer to [jcapi-go](https://github.com/TheJumpCloud/jcapi-go).
-
-Please note that this V1 Go SDK is currently out of date with Jumpcloud's v1 API functionality. This is due to a bug in Swagger Code Gen and how we auto-deploy SDK updates. If you need an updated version of the V1 GO SDK please file an issue in this repository and we can evaluate the request on a per need basis.  If you need to only use our V2 set of endpoints, you can refer to our V2 SDK for Go that supports those endpoints as those are currently up to date with V2 API functionality.  
+This repository is now deprecated. Please refer to our new [JC-API GO Library] (https://github.com/TheJumpCloud/jcapi-go). For  V1 & V2 APIs.   
 
 The scripts under the 'examples' folder in this repo are now deprecated.
 Please refer to [the support repository](https://github.com/TheJumpCloud/support/tree/master/api-utils/JumpCloud_API_Go_Examples) for the maintained examples scripts.
