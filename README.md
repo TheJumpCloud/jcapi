@@ -1,7 +1,7 @@
 jcapi
 =====
 
-This older Go Repository only supports JumpCloud's V1 API endpoints as in not currently up to date with our API functionality. 
+This older Go Repository only supports JumpCloud's V1 API endpoints and is not currently up to date with our API functionality. 
 For current V1 & V2 API Support please refer to [jcapi-go](https://github.com/TheJumpCloud/jcapi-go)
  
 The scripts under the 'examples' folder in this repo are now deprecated.
