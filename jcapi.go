@@ -31,6 +31,7 @@ const (
 type JCAPI struct {
 	ApiKey  string
 	UrlBase string
+	OrgId   string
 }
 
 const (
@@ -60,6 +61,7 @@ func NewJCAPI(apiKey string, urlBase string) JCAPI {
 	return JCAPI{
 		ApiKey:  apiKey,
 		UrlBase: urlBase,
+		OrgId: "",
 	}
 }
 
@@ -128,6 +130,9 @@ func (jc JCAPI) setHeader(req *http.Request) {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("x-api-key", jc.ApiKey)
+	if jc.OrgId != "" {
+		req.Header.Set("x-org-id", jc.OrgId)
+	}
 }
 
 func (jc JCAPI) Post(url string, data []byte) (interface{}, JCError) {
