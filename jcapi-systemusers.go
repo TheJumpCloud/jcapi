@@ -166,11 +166,11 @@ func getJCUserFieldsFromInterface(fields map[string]interface{}, user *JCUser) e
 			return err
 		}
 	}
-  
+
 	if _, exists := fields["enable_user_portal_multifactor"]; exists {
 		user.EnableUserPortalMultifactor = fields["enable_user_portal_multifactor"].(bool)
 	}
-  
+
 	if _, exists := fields["totp_enabled"]; exists {
 		user.TotpEnabled = fields["totp_enabled"].(bool)
 	}
@@ -260,7 +260,7 @@ func (jc JCAPI) GetSystemUserById(userId string, withTags bool) (user JCUser, er
 			// a compiler bug here in that it thinks a := of err is shadowed here,
 			// even though tags should be the only variable declared with the :=
 			tags, err2 := jc.GetAllTags()
-			if err != nil {
+			if err2 != nil {
 				err = fmt.Errorf("ERROR: Could not get tags, err='%s'", err2)
 				return user, err
 			}
@@ -280,7 +280,7 @@ func (jc JCAPI) GetSystemUsers(withTags bool) (userList []JCUser, err JCError) {
 		url := fmt.Sprintf("/systemusers?sort=username&skip=%d&limit=%d", skip, searchLimit)
 
 		jcUserRec, err2 := jc.Get(url)
-		if err != nil {
+		if err2 != nil {
 			return nil, fmt.Errorf("ERROR: Post to JumpCloud failed, err='%s'", err2)
 		}
 
@@ -306,7 +306,7 @@ func (jc JCAPI) GetSystemUsers(withTags bool) (userList []JCUser, err JCError) {
 				// See above about the compiler error that requires me to use err2 instead of err below...
 				//
 				detailedUser, err2 := jc.GetSystemUserById(returnVal[i].Id, false)
-				if err != nil {
+				if err2 != nil {
 					err = fmt.Errorf("ERROR: Could not get details for user ID '%s', err='%s'", returnVal[i].Id, err2)
 					return
 				}
